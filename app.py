@@ -268,7 +268,9 @@ h1, h2, h3, h4, .section-title {
 
 /* ── File uploader ────────────────────────────── */
 [data-testid="stFileUploader"] { border-radius: 10px; }
-[data-testid="stFileUploadDropzone"] {
+
+/* ── Empty state ─── */
+[data-testid="stFileUploaderDropzone"] {
     border: 1.5px dashed rgba(217,178,68,0.48) !important;
     background: #FAFAF8 !important;
     border-radius: 10px !important;
@@ -281,18 +283,92 @@ h1, h2, h3, h4, .section-title {
     align-items: center !important;
     justify-content: center !important;
 }
-[data-testid="stFileUploadDropzone"]:hover {
+[data-testid="stFileUploaderDropzone"]:hover {
     border-color: #D9B244 !important;
     background: linear-gradient(160deg, #FEFCF5 0%, #FAF2DC 100%) !important;
 }
-/* Uploaded state — solid border, slightly cooler bg */
-[data-testid="stFileUploadDropzone"]:has([data-testid="stFileUploadDeleteBtn"]) {
+/* Browse button span — always centered */
+[data-testid="stFileUploaderDropzone"] > span {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+}
+
+/* ── Uploaded state: dropzone keeps its card shape; file list overlays top ─── */
+/* Wrapper is a relative container so the file list can be absolute-positioned */
+[data-testid="stFileUploader"]:has([data-testid="stFileUploaderFile"]) {
+    position: relative !important;
+}
+/* Dropzone retains all card dimensions — only border + bg change on upload */
+[data-testid="stFileUploader"]:has([data-testid="stFileUploaderFile"]) [data-testid="stFileUploaderDropzone"] {
     border: 1px solid #EAE3D8 !important;
     background: #F9F7F4 !important;
+    justify-content: flex-end !important;
+    cursor: default !important;
+    transition: none !important;
 }
-[data-testid="stFileUploadDropzone"]:has([data-testid="stFileUploadDeleteBtn"]):hover {
-    border-color: #D0C8BC !important;
-    background: #F5F1EA !important;
+/* Suppress hover glow when a file is already loaded */
+[data-testid="stFileUploader"]:has([data-testid="stFileUploaderFile"]) [data-testid="stFileUploaderDropzone"]:hover {
+    border-color: #EAE3D8 !important;
+    background: #F9F7F4 !important;
+}
+/* Hide drag-drop instructions — Browse files button stays in dropzone */
+[data-testid="stFileUploader"]:has([data-testid="stFileUploaderFile"]) [data-testid="stFileUploaderDropzoneInstructions"] {
+    display: none !important;
+}
+/* File list overlay: covers card from top down to just above Browse files button */
+[data-testid="stFileUploader"]:has([data-testid="stFileUploaderFile"]) > div:last-of-type {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 2.6rem !important;  /* clears the Browse files button at card bottom */
+    padding: 0 !important;
+    z-index: 2 !important;
+    display: flex !important;
+    align-items: center !important;      /* center file info vertically */
+    justify-content: center !important;
+}
+/* Delete × — pinned to top-right of the overlay (= top-right of card) */
+[data-testid="stFileUploaderDeleteBtn"] {
+    position: absolute !important;
+    top: 0.75rem !important;
+    right: 0.85rem !important;
+    z-index: 3 !important;
+}
+/* File row — icon + name centered; × is out of flow so it doesn't offset centering */
+[data-testid="stFileUploaderFile"] {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    padding: 0 1.2rem !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 0.82rem !important;
+    color: #4A4540 !important;
+}
+/* File name + size block */
+[data-testid="stFileUploaderFileName"] {
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 0.82rem !important;
+    font-weight: 400 !important;
+    color: #1C1714 !important;
+}
+[data-testid="stFileUploaderFileSize"] {
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 0.72rem !important;
+    color: #958F87 !important;
+}
+/* Delete × button styling */
+[data-testid="stFileUploaderDeleteBtn"] button {
+    color: #B0A89E !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 2px 4px !important;
+    cursor: pointer !important;
+}
+[data-testid="stFileUploaderDeleteBtn"] button:hover {
+    color: #dc2626 !important;
 }
 /* Cloud icon — injected via ::before */
 [data-testid="stFileUploaderDropzoneInstructions"] {
@@ -338,9 +414,10 @@ h1, h2, h3, h4, .section-title {
     width: 100% !important;
 }
 
-/* Browse files */
-[data-testid="stFileUploaderDropzoneInstructions"] button,
-[data-testid="stFileUploadDropzone"] button {
+/* Browse files — targets button inside the dropzone's sibling <span> */
+[data-testid="stFileUploaderDropzone"] button {
+    display: block !important;
+    width: fit-content !important;
     border: 1.5px solid #D9B244 !important;
     color: #8A6E1A !important;
     background: transparent !important;
@@ -352,8 +429,7 @@ h1, h2, h3, h4, .section-title {
     cursor: pointer !important;
     transition: background 0.15s ease !important;
 }
-[data-testid="stFileUploaderDropzoneInstructions"] button:hover,
-[data-testid="stFileUploadDropzone"] button:hover {
+[data-testid="stFileUploaderDropzone"] button:hover {
     background: #FBF5E3 !important;
     border-color: #C4A03C !important;
 }
@@ -1283,6 +1359,68 @@ def isin_page():
 
 def main():
     st.markdown(CSS, unsafe_allow_html=True)
+
+    # JS: (1) stamp data-uploaded on dropzones, (2) equalize card heights by
+    # measuring empty-state dropzones and applying that height to uploaded ones.
+    components.html("""
+    <script>
+    (function() {
+        function syncDropzones() {
+            try {
+                var doc = window.parent.document;
+                var uploaders = doc.querySelectorAll('[data-testid="stFileUploader"]');
+                if (uploaders.length === 0) return;
+
+                // Pass 1 — stamp data-uploaded attribute
+                uploaders.forEach(function(uploader) {
+                    var dz = uploader.querySelector('[data-testid="stFileUploaderDropzone"]');
+                    if (!dz) return;
+                    var hasFile = !!uploader.querySelector('[data-testid="stFileUploaderFile"]');
+                    dz.setAttribute('data-uploaded', hasFile ? 'true' : 'false');
+                });
+
+                // Pass 2 — find the tallest EMPTY-state dropzone
+                var maxH = 0;
+                uploaders.forEach(function(uploader) {
+                    var hasFile = !!uploader.querySelector('[data-testid="stFileUploaderFile"]');
+                    if (!hasFile) {
+                        var dz = uploader.querySelector('[data-testid="stFileUploaderDropzone"]');
+                        if (dz) {
+                            // Clear any previously forced height so we read natural height
+                            dz.style.removeProperty('min-height');
+                            var h = dz.getBoundingClientRect().height;
+                            if (h > maxH) maxH = h;
+                        }
+                    }
+                });
+
+                // Pass 3 — force ALL dropzones to that height (uploaded ones won't
+                // naturally reach it; empty ones already meet it via content)
+                if (maxH > 0) {
+                    uploaders.forEach(function(uploader) {
+                        var dz = uploader.querySelector('[data-testid="stFileUploaderDropzone"]');
+                        if (dz) {
+                            dz.style.setProperty('min-height', maxH + 'px', 'important');
+                        }
+                    });
+                }
+            } catch(e) {}
+        }
+
+        // Re-run on every DOM mutation (file add/remove triggers Streamlit rerender)
+        try {
+            var obs = new MutationObserver(function() {
+                setTimeout(syncDropzones, 120);
+            });
+            obs.observe(window.parent.document.body, { childList: true, subtree: true });
+        } catch(e) {}
+
+        // Polling fallback
+        setInterval(syncDropzones, 500);
+        setTimeout(syncDropzones, 300);
+    })();
+    </script>
+    """, height=0)
 
     # Initialise state
     if "section" not in st.session_state:
