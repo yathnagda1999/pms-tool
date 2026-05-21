@@ -500,6 +500,9 @@ h1, h2, h3, h4, .section-title {
     font-family: 'DM Sans', sans-serif !important;
     font-size: 0.84rem !important;
 }
+
+/* ── Hide "Press Enter to apply" hint on all text inputs ── */
+[data-testid="InputInstructions"] { display: none !important; }
 </style>
 """
 
@@ -1613,6 +1616,29 @@ def main():
         // Polling fallback
         setInterval(syncDropzones, 500);
         setTimeout(syncDropzones, 300);
+
+        // Logo → home: click the logo image to navigate to Part 1
+        function wireLogoClick() {
+            try {
+                var doc = window.parent.document;
+                var logo = doc.querySelector('img[src*="data:image/png"]');
+                if (!logo || logo._logoWired) return;
+                logo._logoWired = true;
+                logo.style.cursor = 'pointer';
+                logo.title = 'Go to home';
+                logo.addEventListener('click', function() {
+                    doc.querySelectorAll('button').forEach(function(btn) {
+                        if (btn.textContent.trim() === 'Part 1') btn.click();
+                    });
+                });
+            } catch(e) {}
+        }
+        setTimeout(wireLogoClick, 400);
+        try {
+            new MutationObserver(function() {
+                setTimeout(wireLogoClick, 150);
+            }).observe(window.parent.document.body, { childList: true, subtree: true });
+        } catch(e) {}
     })();
     </script>
     """, height=0)
