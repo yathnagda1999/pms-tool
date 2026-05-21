@@ -1032,55 +1032,103 @@ def p1_export():
 
     session_bytes = to_excel_bytes(session_df, "Session")
     broker_bytes  = to_excel_bytes(broker_file_df, "Broker File")
+    session_b64   = base64.b64encode(session_bytes).decode()
+    broker_b64    = base64.b64encode(broker_bytes).decode()
 
-    # ── Download cards ────────────────────────────────────────────────────────
-    _, dl1, _, dl2, _ = st.columns([1, 2, 0.4, 2, 3])
-
-    with dl1:
-        st.markdown(
-            '<div style="background:#FAFAF8;border:1px solid #EAE3D8;'
-            'border-left:3px solid #D9B244;border-radius:10px;'
-            'padding:1.2rem 1.4rem 1rem">'
-            '<div style="font-family:\'Cormorant Garamond\',Georgia,serif;font-size:1.1rem;'
-            'font-weight:600;color:#1C1714;margin-bottom:3px">Session File</div>'
-            f'<div style="font-size:0.72rem;color:#B0A89E;font-family:\'DM Sans\',sans-serif;'
-            f'letter-spacing:0.4px;text-transform:uppercase;margin-bottom:1rem">'
-            f'{len(session_df)} rows · Batch {batch_num}</div>',
-            unsafe_allow_html=True,
-        )
-        st.download_button(
-            "⬇  Download session_file.xlsx",
-            data=session_bytes,
-            file_name="session_file.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True,
-            type="primary",
-            key="dl_session",
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    with dl2:
-        st.markdown(
-            '<div style="background:#FAFAF8;border:1px solid #EAE3D8;'
-            'border-left:3px solid #D9B244;border-radius:10px;'
-            'padding:1.2rem 1.4rem 1rem">'
-            '<div style="font-family:\'Cormorant Garamond\',Georgia,serif;font-size:1.1rem;'
-            'font-weight:600;color:#1C1714;margin-bottom:3px">Broker File</div>'
-            f'<div style="font-size:0.72rem;color:#B0A89E;font-family:\'DM Sans\',sans-serif;'
-            f'letter-spacing:0.4px;text-transform:uppercase;margin-bottom:1rem">'
-            f'{n_stocks} stocks · send to broker</div>',
-            unsafe_allow_html=True,
-        )
-        st.download_button(
-            "⬇  Download broker_file.xlsx",
-            data=broker_bytes,
-            file_name="broker_file.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True,
-            type="primary",
-            key="dl_broker",
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
+    # ── Download badges — split-badge row: [Session File | ⬇ xlsx]  [Broker File | ⬇ xlsx]  [Download Both] ──
+    _dl_icon = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12 3v13"/><polyline points="7 11 12 16 17 11"/><line x1="5" y1="21" x2="19" y2="21"/></svg>'
+    components.html(f"""
+    <style>
+    *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    body {{ background: transparent; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; }}
+    .dl-row {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        padding: 10px 0 8px 0;
+        flex-wrap: nowrap;
+    }}
+    /* Split badge: grey label + gold action */
+    .dl-badge {{
+        display: inline-flex;
+        height: 42px;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid #EAE3D8;
+        text-decoration: none;
+        flex-shrink: 0;
+    }}
+    .dl-badge-label {{
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 16px;
+        background: #F0EBE3;
+        color: #4A4540;
+        font-size: 11px;
+        letter-spacing: 0.65px;
+        text-transform: uppercase;
+        font-weight: 500;
+        white-space: nowrap;
+        border-right: 1px solid #EAE3D8;
+    }}
+    .dl-badge-action {{
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 0 20px;
+        background: #D9B244;
+        color: #fff;
+        font-size: 13px;
+        font-weight: 400;
+        white-space: nowrap;
+        transition: background 0.15s;
+    }}
+    .dl-badge:hover .dl-badge-action {{ background: #C4A03C; }}
+    /* Full-gold Download Both button */
+    .dl-both {{
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        height: 42px;
+        border-radius: 8px;
+        padding: 0 24px;
+        background: #D9B244;
+        border: 1.5px solid #D9B244;
+        color: #fff;
+        font-size: 13px;
+        font-weight: 400;
+        white-space: nowrap;
+        cursor: pointer;
+        flex-shrink: 0;
+        font-family: inherit;
+        transition: background 0.15s;
+    }}
+    .dl-both:hover {{ background: #C4A03C; border-color: #C4A03C; }}
+    </style>
+    <div class="dl-row">
+      <a class="dl-badge"
+         href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{session_b64}"
+         download="session_file.xlsx">
+        <span class="dl-badge-label">Session File</span>
+        <span class="dl-badge-action">{_dl_icon} Download session_file.xlsx</span>
+      </a>
+      <a class="dl-badge"
+         href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{broker_b64}"
+         download="broker_file.xlsx">
+        <span class="dl-badge-label">Broker File</span>
+        <span class="dl-badge-action">{_dl_icon} Download broker_file.xlsx</span>
+      </a>
+      <button class="dl-both" onclick="
+        var badges = document.querySelectorAll('a.dl-badge');
+        try {{ if (badges[0]) badges[0].click(); }} catch(e) {{}}
+        setTimeout(function() {{ try {{ if (badges[1]) badges[1].click(); }} catch(e) {{}} }}, 400);
+      ">{_dl_icon} Download Both Files</button>
+    </div>
+    """, height=72)
 
     # ── Broker file preview ───────────────────────────────────────────────────
     st.markdown('<div style="height:1.6rem"></div>', unsafe_allow_html=True)
