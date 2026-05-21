@@ -73,9 +73,11 @@ def allocate_costs(
         weights = group["Qty"] / total_qty
 
         # Verify weights sum to ~1.0
-        assert math.isclose(weights.sum(), 1.0, rel_tol=1e-6), (
-            f"Weights do not sum to 1.0 for ISIN {isin_upper}: {weights.sum()}"
-        )
+        if not math.isclose(weights.sum(), 1.0, rel_tol=1e-6):
+            raise ValueError(
+                f"Allocation error: weights do not sum to 1.0 for ISIN {isin_upper} "
+                f"({dir_upper}): got {weights.sum()}. Check for zero or negative quantities."
+            )
 
         trade_date = broker_row["TradeDate"]
         exchange = broker_row["Exchange"]

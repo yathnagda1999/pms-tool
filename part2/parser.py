@@ -95,7 +95,7 @@ def get_incred_cp_codes(file) -> dict[str, str]:
         return {}
     result = {}
     for _, row in df.iterrows():
-        isin = str(row["ISIN No."]).strip()
+        isin = str(row["ISIN No."]).strip().upper()  # normalise to uppercase for consistent lookup
         cp = str(row.get("CP CODE", "")).strip()
         if isin and cp:
             result[isin] = cp

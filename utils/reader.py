@@ -301,6 +301,7 @@ def read_broker_reply_ambit(file) -> pd.DataFrame:
     import openpyxl
     wb = openpyxl.load_workbook(file, data_only=True)
     _find_sheet(wb.sheetnames, "Sheet1")
+    file.seek(0)  # reset pointer after openpyxl read, before pd.read_excel
 
     df = pd.read_excel(file, sheet_name="Sheet1", engine="openpyxl")
     df.columns = [str(c).strip() for c in df.columns]
@@ -332,6 +333,7 @@ def read_broker_reply_incred(file) -> pd.DataFrame:
     import openpyxl
     wb = openpyxl.load_workbook(file, data_only=True)
     _find_sheet(wb.sheetnames, INCRED_SHEET)
+    file.seek(0)  # reset pointer after openpyxl read, before pd.read_excel
 
     df = pd.read_excel(file, sheet_name=INCRED_SHEET, engine="openpyxl", dtype=str)
     df.columns = [str(c).strip() for c in df.columns]
