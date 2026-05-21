@@ -1,7 +1,7 @@
 """
 Input file readers for all PMS tool formats.
 All functions accept a file-like object (BytesIO or UploadedFile).
-All column lookups are dynamic — never hardcoded by index.
+All column lookups are dynamic - never hardcoded by index.
 """
 from io import BytesIO
 
@@ -107,7 +107,7 @@ def read_bank_book(file) -> dict[str, float]:
 
     rows = list(ws.iter_rows(values_only=True))
 
-    # Locate header row dynamically — find row containing "OFIN Code"
+    # Locate header row dynamically - find row containing "OFIN Code"
     header_row_idx = None
     ofin_col = None
     balance_col = None
@@ -134,7 +134,7 @@ def read_bank_book(file) -> dict[str, float]:
     for row in rows[header_row_idx + 1:]:
         row_vals = [v for v in row]
 
-        # Check if this is a "Total" row — look for "Total" text in any cell
+        # Check if this is a "Total" row - look for "Total" text in any cell
         is_total = any(
             str(v).strip().lower() == "total"
             for v in row_vals
@@ -192,7 +192,7 @@ def read_scrip_wise_report(file) -> pd.DataFrame:
 
     ws = wb.sheet_by_name("file")
 
-    # Locate header row — find row containing "Scrip Name"
+    # Locate header row - find row containing "Scrip Name"
     header_row_idx = None
     col_scrip = col_isin = col_client_code = col_qty = None
 
@@ -275,13 +275,13 @@ def read_session_file(file) -> pd.DataFrame:
     df["OFIN"] = _normalise_ofin(df["OFIN"])
     df["Qty"] = pd.to_numeric(df["Qty"], errors="coerce")
     df["Ref Price"] = pd.to_numeric(df["Ref Price"], errors="coerce")
-    df["Batch"] = pd.to_numeric(df["Batch"], errors="coerce").astype(int)
-    df["S.No"] = pd.to_numeric(df["S.No"], errors="coerce").astype(int)
+    df["Batch"] = pd.to_numeric(df["Batch"], errors="coerce").astype("Int64")
+    df["S.No"]  = pd.to_numeric(df["S.No"],  errors="coerce").astype("Int64")
     return df
 
 
 # ---------------------------------------------------------------------------
-# Broker Reply — Ambit
+# Broker Reply - Ambit
 # ---------------------------------------------------------------------------
 
 AMBIT_REQUIRED = ["Transaction Date", "Exchange", "ISIN No.", "Transaction Type",
@@ -310,7 +310,7 @@ def read_broker_reply_ambit(file) -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
-# Broker Reply — InCred
+# Broker Reply - InCred
 # ---------------------------------------------------------------------------
 
 INCRED_SHEET = "Incred_Capital_Trade_Confirmati"

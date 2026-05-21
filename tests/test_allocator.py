@@ -46,7 +46,7 @@ def test_weights_sum_to_one():
     broker = _make_broker("INE001", "BUY", 600)
     result = allocate_costs(session, broker)
     assert not result.empty
-    # Weights: 100/600, 200/600, 300/600 — verified via charge sums
+    # Weights: 100/600, 200/600, 300/600 - verified via charge sums
     assert math.isclose(
         result["InputBrokerage"].sum(), 100.0, rel_tol=1e-6
     )

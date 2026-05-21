@@ -50,7 +50,7 @@ def parse_incred_reply(file) -> pd.DataFrame:
     """Parse InCred broker reply and normalise to internal schema.
 
     Trade date is today's date (InCred reply has no date column).
-    CP Code is read from the reply and stored separately — call get_incred_cp_codes() if needed.
+    CP Code is read from the reply and stored separately - call get_incred_cp_codes() if needed.
 
     Args:
         file: BytesIO or Streamlit UploadedFile (.xlsx)

@@ -1,5 +1,5 @@
 """
-Excel file writers — produce bytes for Streamlit download buttons.
+Excel file writers - produce bytes for Streamlit download buttons.
 """
 from io import BytesIO
 
@@ -29,8 +29,64 @@ def to_excel_bytes(df: pd.DataFrame, sheet_name: str = "Sheet1") -> bytes:
     return buf.getvalue()
 
 
+def write_session_file(session_df: pd.DataFrame) -> bytes:
+    """Write session file with light amber highlight on blank CP Code cells.
+
+    Any row where CP Code is empty, NaN, or 'nan' gets an amber fill
+    on the CP Code cell only - a visual flag for ops to fill before Part 2.
+
+    Args:
+        session_df: session DataFrame from build_session_file()
+
+    Returns:
+        bytes suitable for st.download_button
+    """
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Session"
+
+    cols = list(session_df.columns)
+    cp_col_idx = (cols.index("CP Code") + 1) if "CP Code" in cols else None
+
+    # Header row - bold
+    for col_idx, col_name in enumerate(cols, start=1):
+        cell = ws.cell(row=1, column=col_idx, value=col_name)
+        cell.font = Font(bold=True)
+
+    # Data rows
+    for row_idx, (_, row) in enumerate(session_df.iterrows(), start=2):
+        for col_idx, col_name in enumerate(cols, start=1):
+            val = row[col_name]
+            if pd.isna(val) if not isinstance(val, str) else False:
+                val = ""
+            ws.cell(row=row_idx, column=col_idx, value=val)
+
+        # Highlight CP Code cell if blank
+        if cp_col_idx is not None:
+            cp_val = str(row.get("CP Code", "")).strip().lower()
+            if not cp_val or cp_val == "nan":
+                ws.cell(row=row_idx, column=cp_col_idx).fill = CP_BLANK_FILL
+
+    # Auto-width
+    for col_idx, col_name in enumerate(cols, start=1):
+        col_letter = get_column_letter(col_idx)
+        max_len = max(
+            len(str(col_name)),
+            max(
+                (len(str(ws.cell(row=r, column=col_idx).value or ""))
+                 for r in range(2, ws.max_row + 1)),
+                default=0,
+            ),
+        )
+        ws.column_dimensions[col_letter].width = min(max_len + 2, 40)
+
+    buf = BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
 # ---------------------------------------------------------------------------
-# Allocation file writer — formatted
+# Allocation file writer - formatted
 # ---------------------------------------------------------------------------
 
 CURRENCY_COLS = {
@@ -39,8 +95,9 @@ CURRENCY_COLS = {
     "InputNetAmount", "InputNetRate",
 }
 
-HEADER_FILL = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
-HEADER_FONT = Font(bold=True, color="FFFFFF", size=10)
+HEADER_FILL    = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
+HEADER_FONT    = Font(bold=True, color="FFFFFF", size=10)
+CP_BLANK_FILL  = PatternFill(start_color="FEF3C7", end_color="FEF3C7", fill_type="solid")  # light amber
 
 
 def write_allocation_file(allocation_df: pd.DataFrame) -> bytes:
@@ -84,15 +141,16 @@ def write_allocation_file(allocation_df: pd.DataFrame) -> bytes:
             elif col_name == "Settlement No":
                 cell.value = None  # always blank
 
-    # Auto-width
+    # Auto-width - default=0 guards against empty DataFrame (no data rows)
     for col_idx, col_name in enumerate(cols, start=1):
         col_letter = get_column_letter(col_idx)
         max_len = max(
             len(str(col_name)),
-            *[
-                len(str(ws.cell(row=r, column=col_idx).value or ""))
-                for r in range(2, ws.max_row + 1)
-            ],
+            max(
+                (len(str(ws.cell(row=r, column=col_idx).value or ""))
+                 for r in range(2, ws.max_row + 1)),
+                default=0,
+            ),
         )
         ws.column_dimensions[col_letter].width = min(max_len + 2, 30)
 

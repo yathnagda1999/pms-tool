@@ -59,7 +59,7 @@ def match_session_to_broker(
     ].copy()
 
     # Attach broker data to matched session rows
-    # For dual-exchange, one session row joins to multiple broker rows — handled in allocator
+    # For dual-exchange, one session row joins to multiple broker rows - handled in allocator
     broker_indexed = broker.set_index(["_ISIN_upper", "_Dir_upper"])
 
     def _attach_broker(row):
@@ -68,7 +68,7 @@ def match_session_to_broker(
             return row
         b = broker_indexed.loc[key]
         if isinstance(b, pd.DataFrame):
-            # Multiple broker rows (dual exchange) — take first for now; allocator handles split
+            # Multiple broker rows (dual exchange) - take first for now; allocator handles split
             b = b.iloc[0]
         row["_broker_exchange"] = b["Exchange"]
         row["_broker_trade_date"] = b["TradeDate"]

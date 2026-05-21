@@ -4,7 +4,7 @@ Returns the research DataFrame enriched with Status, Reason, ISIN, and Context c
 """
 import pandas as pd
 
-from utils.isin import lookup_isin
+from utils.isin import lookup_isin, build_isin_index
 
 
 def _get_committed_cash(existing_session_df: pd.DataFrame | None) -> dict[str, float]:
@@ -63,14 +63,17 @@ def validate_orders(
     scrip_norm["Scrip Name"] = scrip_norm["Scrip Name"].str.upper().str.strip()
     scrip_norm["OFIN"] = scrip_norm["OFIN"].astype(str).str.strip()
 
-    # ISIN lookup — scrip_df first, then isin_db
+    # Build O(1) lookup index once - avoids re-scanning 5K rows per order
+    isin_index = build_isin_index(isin_db)
+
+    # ISIN lookup - scrip_df first, then isin_db index
     def _lookup_isin_for_row(ticker: str, ofin: str, direction: str) -> str:
         # Try scrip-wise report for this ticker (any client row)
         matches = scrip_norm[scrip_norm["Scrip Name"] == ticker.upper().strip()]
         if not matches.empty and matches.iloc[0]["ISIN"]:
             return matches.iloc[0]["ISIN"]
-        # Fall back to ISIN database
-        isin = lookup_isin(ticker, isin_db)
+        # Fall back to ISIN database - O(1) dict lookup
+        isin = lookup_isin(ticker, isin_db, _index=isin_index)
         return isin if isin else ""
 
     df["ISIN"] = df.apply(
@@ -116,7 +119,7 @@ def validate_orders(
             elif held < qty:
                 sell_status.append("RED")
                 sell_reason.append(
-                    f"Insufficient units — holds {int(held):,}, needs {int(qty):,}"
+                    f"Insufficient units - holds {int(held):,}, needs {int(qty):,}"
                 )
                 sell_context.append(f"Units held: {int(held):,}")
             else:
@@ -161,7 +164,7 @@ def validate_orders(
             elif available < required:
                 statuses.append((orig_idx, "RED"))
                 reasons.append((orig_idx,
-                    f"Insufficient cash — available ₹{available:,.2f}, needs ₹{required:,.2f}"
+                    f"Insufficient cash - available ₹{available:,.2f}, needs ₹{required:,.2f}"
                 ))
                 contexts.append((orig_idx, f"Available: ₹{available:,.2f}"))
             else:

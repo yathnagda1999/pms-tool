@@ -29,7 +29,7 @@ def allocate_costs(
 
     Weight = client_qty / total_qty per ISIN+Direction group.
     Last client per group receives residual (broker_total - sum of others)
-    for every charge column independently — full precision, no rounding.
+    for every charge column independently - full precision, no rounding.
     All other clients rounded to 2 decimal places.
 
     Args:
@@ -130,7 +130,7 @@ def allocate_costs(
             else:
                 rec["InputNetAmount"] = round(w * broker_net, 2)
 
-            # Net Rate — full precision
+            # Net Rate - full precision
             rec["InputNetRate"] = rec["InputNetAmount"] / int(row["Qty"])
 
             group_records.append(rec)

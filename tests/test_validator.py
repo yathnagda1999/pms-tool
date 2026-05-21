@@ -135,7 +135,7 @@ def test_isin_populated_from_scrip_report(
 def test_isin_populated_from_database_fallback(
     sample_research_df, sample_bank_book, sample_isin_db
 ):
-    # Empty scrip_df — forces ISIN database lookup
+    # Empty scrip_df - forces ISIN database lookup
     empty_scrip = pd.DataFrame(columns=["OFIN", "Scrip Name", "ISIN", "Quantity"])
     result = validate_orders(
         sample_research_df, sample_bank_book, empty_scrip, sample_isin_db

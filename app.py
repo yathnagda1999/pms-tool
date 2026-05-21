@@ -1,5 +1,5 @@
 """
-PMS Execution Semi-Automation Tool — Guardian Capital
+PMS Execution Semi-Automation Tool - Guardian Capital
 Step-based single-page Streamlit app with modern UI.
 """
 import io
@@ -15,7 +15,7 @@ from utils.reader import (
     read_research_file, read_bank_book, read_scrip_wise_report,
     read_session_file,
 )
-from utils.writer import to_excel_bytes, write_allocation_file
+from utils.writer import to_excel_bytes, write_session_file, write_allocation_file
 from part1.validator import validate_orders
 from part1.session import build_session_file
 from part1.broker_file import build_broker_file
@@ -28,7 +28,7 @@ from part2.allocator import allocate_costs
 LOGO_PATH = pathlib.Path(__file__).parent / "assets" / "logo_transparent.png"
 
 st.set_page_config(
-    page_title="PMS Execution Tool — Guardian Capital",
+    page_title="PMS Execution Tool - Guardian Capital",
     page_icon=str(LOGO_PATH) if LOGO_PATH.exists() else "📊",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -53,7 +53,7 @@ html, body, [class*="css"], .stApp {
 [data-testid="collapsedControl"] { display: none; }
 .stAppDeployButton { display: none; }
 
-/* Block container — full width, generous padding */
+/* Block container - full width, generous padding */
 .block-container {
     padding-top: 0.25rem !important;
     padding-left: 3rem !important;
@@ -97,7 +97,7 @@ h1, h2, h3, h4, .section-title {
     font-family: 'DM Sans', sans-serif;
     letter-spacing: 0.15px;
 }
-/* Active step — dark fill with gold text: visually dominant */
+/* Active step - dark fill with gold text: visually dominant */
 .step-pill.active {
     background: #1C1714;
     border-color: #1C1714;
@@ -134,7 +134,7 @@ h1, h2, h3, h4, .section-title {
     font-weight: 300;
 }
 
-/* ── Field labels — uppercase, muted, tracked ── */
+/* ── Field labels - uppercase, muted, tracked ── */
 .upload-label {
     font-size: 0.67rem;
     font-weight: 400;
@@ -223,7 +223,7 @@ h1, h2, h3, h4, .section-title {
     transform: translateY(-1px) !important;
     box-shadow: 0 4px 16px rgba(0,0,0,0.08) !important;
 }
-/* Primary — gold fill */
+/* Primary - gold fill */
 [data-testid="baseButton-primary"] {
     background-color: #D9B244 !important;
     border-color: #D9B244 !important;
@@ -241,7 +241,7 @@ h1, h2, h3, h4, .section-title {
     transform: none !important;
     box-shadow: none !important;
 }
-/* Secondary — warm gold-outlined so it reads as a clickable button */
+/* Secondary - warm gold-outlined so it reads as a clickable button */
 [data-testid="baseButton-secondary"] {
     background: linear-gradient(180deg, #FEFCF6 0%, #F9F3E3 100%) !important;
     border: 1.5px solid #D9B244 !important;
@@ -289,7 +289,7 @@ h1, h2, h3, h4, .section-title {
     border-color: #D9B244 !important;
     background: linear-gradient(160deg, #FEFCF5 0%, #FAF2DC 100%) !important;
 }
-/* Browse button span — always centered */
+/* Browse button span - always centered */
 [data-testid="stFileUploaderDropzone"] > span {
     width: 100% !important;
     display: flex !important;
@@ -301,7 +301,7 @@ h1, h2, h3, h4, .section-title {
 [data-testid="stFileUploader"]:has([data-testid="stFileUploaderFile"]) {
     position: relative !important;
 }
-/* Dropzone retains all card dimensions — only border + bg change on upload */
+/* Dropzone retains all card dimensions - only border + bg change on upload */
 [data-testid="stFileUploader"]:has([data-testid="stFileUploaderFile"]) [data-testid="stFileUploaderDropzone"] {
     border: 1px solid #EAE3D8 !important;
     background: #F9F7F4 !important;
@@ -314,7 +314,7 @@ h1, h2, h3, h4, .section-title {
     border-color: #EAE3D8 !important;
     background: #F9F7F4 !important;
 }
-/* Hide drag-drop instructions — Browse files button stays in dropzone */
+/* Hide drag-drop instructions - Browse files button stays in dropzone */
 [data-testid="stFileUploader"]:has([data-testid="stFileUploaderFile"]) [data-testid="stFileUploaderDropzoneInstructions"] {
     display: none !important;
 }
@@ -331,14 +331,14 @@ h1, h2, h3, h4, .section-title {
     align-items: center !important;      /* center file info vertically */
     justify-content: center !important;
 }
-/* Delete × — pinned to top-right of the overlay (= top-right of card) */
+/* Delete × - pinned to top-right of the overlay (= top-right of card) */
 [data-testid="stFileUploaderDeleteBtn"] {
     position: absolute !important;
     top: 0.75rem !important;
     right: 0.85rem !important;
     z-index: 3 !important;
 }
-/* File row — icon + name centered; × is out of flow so it doesn't offset centering */
+/* File row - icon + name centered; × is out of flow so it doesn't offset centering */
 [data-testid="stFileUploaderFile"] {
     display: flex !important;
     align-items: center !important;
@@ -372,7 +372,7 @@ h1, h2, h3, h4, .section-title {
 [data-testid="stFileUploaderDeleteBtn"] button:hover {
     color: #dc2626 !important;
 }
-/* Cloud icon — injected via ::before */
+/* Cloud icon - injected via ::before */
 [data-testid="stFileUploaderDropzoneInstructions"] {
     font-family: 'DM Sans', sans-serif !important;
     display: flex !important;
@@ -416,7 +416,7 @@ h1, h2, h3, h4, .section-title {
     width: 100% !important;
 }
 
-/* Browse files — targets button inside the dropzone's sibling <span> */
+/* Browse files - targets button inside the dropzone's sibling <span> */
 [data-testid="stFileUploaderDropzone"] button {
     display: block !important;
     width: fit-content !important;
@@ -454,7 +454,7 @@ h1, h2, h3, h4, .section-title {
     border: 1px solid #EAE3D8 !important;
     border-radius: 8px !important;
 }
-/* Darker column headers — target the header row overlay that sits above the canvas */
+/* Darker column headers - target the header row overlay that sits above the canvas */
 [data-testid="stDataFrame"] [role="columnheader"],
 [data-testid="stDataEditor"] [role="columnheader"] {
     background: #E8E0D2 !important;
@@ -470,7 +470,7 @@ h1, h2, h3, h4, .section-title {
     font-weight: 500 !important;
 }
 
-/* ── Checkbox — warm pill so it reads on white ── */
+/* ── Checkbox - warm pill so it reads on white ── */
 [data-testid="stCheckbox"] > label {
     background: #F9F7F4 !important;
     border: 1px solid #EAE3D8 !important;
@@ -552,7 +552,7 @@ def divider():
 
 
 def nav():
-    """Top navigation bar: [Brand: logo + title] ——— [Part 1] [Part 2] [ISIN DB]"""
+    """Top navigation bar: [Brand: logo + title] --- [Part 1] [Part 2] [ISIN DB]"""
     logo_b64 = _logo_b64()
     logo_html = (
         f'<img src="data:image/png;base64,{logo_b64}" '
@@ -562,7 +562,7 @@ def nav():
 
     section = st.session_state.get("section", "part1")
 
-    # Layout: [brand] [Part 1] [Part 2] [——spacer——] [ISIN DB]
+    # Layout: [brand] [Part 1] [Part 2] [--spacer--] [ISIN DB]
     # Part 1 & Part 2 stay LEFT (grouped with brand); ISIN Database at far RIGHT
     col_brand, col_p1, col_p2, col_spacer, col_isin = st.columns(
         [2.8, 0.65, 0.65, 5.5, 1.1]
@@ -585,7 +585,7 @@ def nav():
         )
         st.markdown(brand_html, unsafe_allow_html=True)
 
-    # Nav buttons — vertically centred against the 88px brand block
+    # Nav buttons - vertically centred against the 88px brand block
     _btn_pad = '<div style="padding-top:26px">'
     _btn_end = '</div>'
 
@@ -606,7 +606,7 @@ def nav():
         st.markdown(_btn_end, unsafe_allow_html=True)
 
     with col_spacer:
-        pass  # intentional — pushes ISIN Database to far right
+        pass  # intentional - pushes ISIN Database to far right
 
     with col_isin:
         st.markdown(_btn_pad, unsafe_allow_html=True)
@@ -616,7 +616,7 @@ def nav():
             st.rerun()
         st.markdown(_btn_end, unsafe_allow_html=True)
 
-    # Separator pulled hard against the nav — aggressive negative margin collapses
+    # Separator pulled hard against the nav - aggressive negative margin collapses
     # the ~1rem Streamlit adds between every element pair
     st.markdown(
         '<div style="height:1px;background:linear-gradient(90deg,'
@@ -626,13 +626,13 @@ def nav():
     )
 
 
-# ── Part 1 — Step 1: Upload ───────────────────────────────────────────────────
+# ── Part 1 - Step 1: Upload ───────────────────────────────────────────────────
 
 def p1_upload():
     st.markdown('<div class="fade-in">', unsafe_allow_html=True)
 
     # Read batch state from session_state so layout (3 vs 4 cards) is decided
-    # BEFORE rendering widgets — avoids chicken-and-egg ordering problem.
+    # BEFORE rendering widgets - avoids chicken-and-egg ordering problem.
     batch_mode = st.session_state.get("p1_second_batch", False)
 
     # ── Page title ─────────────────────────────────────────────────────────────
@@ -678,7 +678,7 @@ def p1_upload():
             st.markdown('<div class="upload-label">Existing Session File <span class="upload-required">*</span></div>', unsafe_allow_html=True)
             existing_file = st.file_uploader("Existing Session File", type=["xlsx"], key="p1_existing", label_visibility="collapsed")
 
-    # ── Settings row 1 — Multiple Batches + Price Tolerance, centered together
+    # ── Settings row 1 - Multiple Batches + Price Tolerance, centered together
     st.markdown('<div style="height:0.6rem"></div>', unsafe_allow_html=True)
 
     _, col_cb, _, col_tol, _ = st.columns([2.2, 2, 0.4, 2, 2.2])
@@ -703,7 +703,7 @@ def p1_upload():
                 f'<div style="font-size:0.72rem;color:#92400e;background:#FEF3C7;'
                 f'border:1px solid rgba(217,178,68,0.35);border-radius:4px;'
                 f'padding:4px 9px;margin-top:5px;font-family:\'DM Sans\',sans-serif;">'
-                f'⚠ High tolerance — {tolerance:.1f}%</div>',
+                f'⚠ High tolerance - {tolerance:.1f}%</div>',
                 unsafe_allow_html=True,
             )
 
@@ -711,7 +711,7 @@ def p1_upload():
     if batch_mode and not existing_file:
         all_uploaded = False
 
-    # ── Settings row 2 — Validate Orders button, right-aligned (under card 3)
+    # ── Settings row 2 - Validate Orders button, right-aligned (under card 3)
     st.markdown('<div style="height:0.4rem"></div>', unsafe_allow_html=True)
     _, col_btn, _ = st.columns([5.8, 2, 1])
 
@@ -757,7 +757,7 @@ def p1_upload():
     st.markdown('</div>', unsafe_allow_html=True)
 
 
-# ── Part 1 — Step 2: Validate ─────────────────────────────────────────────────
+# ── Part 1 - Step 2: Validate ─────────────────────────────────────────────────
 
 def p1_validate():
     st.markdown('<div class="fade-in">', unsafe_allow_html=True)
@@ -825,7 +825,7 @@ def p1_validate():
 
     st.markdown('<div style="height:0.5rem"></div>', unsafe_allow_html=True)
 
-    # ── Build editor DataFrame — Context before Reason ────────────────────────
+    # ── Build editor DataFrame - Context before Reason ────────────────────────
     context_col = "Context" if "Context" in vdf.columns else None
     base_cols = ["S.No", "Client", "Ticker", "Direction", "Qty", "Ref Price", "Status"]
     if context_col:
@@ -842,7 +842,7 @@ def p1_validate():
         editor_df["Include"] = False
 
     # ── Split table: narrow checkbox editor (left) + colour-styled display (right)
-    # Both use auto-height (no cap) so the PAGE scrolls — keeps rows in visual sync.
+    # Both use auto-height (no cap) so the PAGE scrolls - keeps rows in visual sync.
     col_check, col_table = st.columns([0.7, 8.3])
 
     with col_check:
@@ -900,7 +900,7 @@ def p1_validate():
             f'border:1px solid rgba(220,38,38,0.18);border-left:3px solid #dc2626;'
             f'border-radius:6px;padding:0.7rem 1rem;font-size:0.82rem;color:#b91c1c;'
             f'margin-top:0.6rem;font-family:\'DM Sans\',sans-serif;font-weight:400">'
-            f'⚠  {red_included} blocked row(s) still marked as included — '
+            f'⚠  {red_included} blocked row(s) still marked as included - '
             f'uncheck or click "Exclude all red" above.</div>',
             unsafe_allow_html=True,
         )
@@ -1002,7 +1002,7 @@ def p1_validate():
     st.markdown('</div>', unsafe_allow_html=True)
 
 
-# ── Part 1 — Step 3: Download ─────────────────────────────────────────────────
+# ── Part 1 - Step 3: Download ─────────────────────────────────────────────────
 
 def p1_export():
     st.markdown('<div class="fade-in">', unsafe_allow_html=True)
@@ -1033,12 +1033,12 @@ def p1_export():
             unsafe_allow_html=True,
         )
 
-    session_bytes = to_excel_bytes(session_df, "Session")
+    session_bytes = write_session_file(session_df)
     broker_bytes  = to_excel_bytes(broker_file_df, "Broker File")
     session_b64   = base64.b64encode(session_bytes).decode()
     broker_b64    = base64.b64encode(broker_bytes).decode()
 
-    # ── Download badges — split-badge row: [Session File | ⬇ xlsx]  [Broker File | ⬇ xlsx]  [Download Both] ──
+    # ── Download badges - split-badge row: [Session File | ⬇ xlsx]  [Broker File | ⬇ xlsx]  [Download Both] ──
     _dl_icon = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12 3v13"/><polyline points="7 11 12 16 17 11"/><line x1="5" y1="21" x2="19" y2="21"/></svg>'
     components.html(f"""
     <style>
@@ -1161,14 +1161,14 @@ def p1_export():
     st.markdown('</div>', unsafe_allow_html=True)
 
 
-# ── Part 2 — Step 1: Upload ───────────────────────────────────────────────────
+# ── Part 2 - Step 1: Upload ───────────────────────────────────────────────────
 
 def p2_upload():
     st.markdown('<div class="fade-in">', unsafe_allow_html=True)
 
     # ── Header ────────────────────────────────────────────────────────────────
     st.markdown(
-        '<div style="margin:0.3rem 0 1.4rem 0">'
+        '<div style="margin:0.3rem 0 1.4rem 0;text-align:center">'
         '<div style="font-family:\'Cormorant Garamond\',Georgia,serif;'
         'font-size:2rem;font-weight:600;color:#1C1714;line-height:1;margin-bottom:5px">'
         'Upload & Configure</div>'
@@ -1178,7 +1178,7 @@ def p2_upload():
         unsafe_allow_html=True,
     )
 
-    # ── Two upload cards — margin cols sized so each card ≈ same px as Part 1 ──
+    # ── Two upload cards - margin cols sized so each card ≈ same px as Part 1 ──
     # Part 1 uses [1,2,0.4,2,0.4,2,1]=8.8 total; card=2/8.8≈22.7% of page.
     # Here: [2.2,2,0.4,2,2.2]=8.8 total → same 22.7% per card, stays vertical.
     _, col1, _, col2, _ = st.columns([2.2, 2, 0.4, 2, 2.2])
@@ -1199,7 +1199,7 @@ def p2_upload():
             "Broker Reply", type=["xlsx"], key="p2_broker", label_visibility="collapsed",
         )
 
-    # ── Settings row — broker selector + process button ───────────────────────
+    # ── Settings row - broker selector + process button ───────────────────────
     st.markdown('<div style="height:0.6rem"></div>', unsafe_allow_html=True)
 
     _, col_broker, _, col_btn, _ = st.columns([2.2, 2, 0.4, 2, 2.2])
@@ -1263,7 +1263,7 @@ def p2_upload():
     st.markdown('</div>', unsafe_allow_html=True)
 
 
-# ── Part 2 — Step 2: Results ──────────────────────────────────────────────────
+# ── Part 2 - Step 2: Results ──────────────────────────────────────────────────
 
 def p2_results():
     st.markdown('<div class="fade-in">', unsafe_allow_html=True)
@@ -1274,26 +1274,37 @@ def p2_results():
     n_clients = len(allocation_df)
     n_stocks  = allocation_df["ISIN No"].nunique()
 
-    # ── Header + inline pills ─────────────────────────────────────────────────
+    # ── Header + split-badge blocks ───────────────────────────────────────────
     st.markdown(
-        f'<div style="margin:0.3rem 0 1.4rem 0;display:flex;align-items:flex-end;'
-        f'gap:20px;flex-wrap:wrap">'
-        f'<div>'
+        f'<div style="margin:0.3rem 0 1.4rem 0;text-align:center">'
         f'<div style="font-family:\'Cormorant Garamond\',Georgia,serif;'
-        f'font-size:2rem;font-weight:600;color:#1C1714;line-height:1;margin-bottom:5px">'
+        f'font-size:2rem;font-weight:600;color:#1C1714;line-height:1;margin-bottom:16px">'
         f'Allocation Complete</div>'
-        f'<div style="font-size:0.83rem;color:#958F87;font-family:\'DM Sans\',sans-serif;'
-        f'font-weight:300">Cost allocation ready for Orbis upload.</div>'
+        f'<div style="display:inline-flex;align-items:center;gap:12px">'
+        # ── Stocks block ──────────────────────────────────────────────────────
+        f'<div style="display:flex;border:1px solid rgba(22,163,74,0.28);'
+        f'border-radius:8px;overflow:hidden;height:38px">'
+        f'<div style="padding:0 14px;display:flex;align-items:center;'
+        f'background:rgba(22,163,74,0.05);font-size:0.67rem;color:#16a34a;'
+        f'letter-spacing:0.65px;text-transform:uppercase;font-weight:400;'
+        f'font-family:\'DM Sans\',sans-serif;white-space:nowrap">Stocks</div>'
+        f'<div style="padding:0 18px;display:flex;align-items:center;'
+        f'background:rgba(22,163,74,0.1);font-size:1rem;font-weight:600;'
+        f'color:#16a34a;font-family:\'DM Sans\',sans-serif;'
+        f'border-left:1px solid rgba(22,163,74,0.2)">{n_stocks}</div>'
         f'</div>'
-        f'<div style="display:flex;gap:8px;padding-bottom:4px">'
-        f'<div style="background:rgba(22,163,74,0.07);border:1px solid rgba(22,163,74,0.22);'
-        f'border-radius:20px;padding:4px 14px;font-size:0.78rem;color:#16a34a;'
-        f'font-family:\'DM Sans\',sans-serif;font-weight:500;white-space:nowrap">'
-        f'{n_stocks} stocks</div>'
-        f'<div style="background:#F9F7F4;border:1px solid #EAE3D8;'
-        f'border-radius:20px;padding:4px 14px;font-size:0.78rem;color:#4A4540;'
-        f'font-family:\'DM Sans\',sans-serif;font-weight:400;white-space:nowrap">'
-        f'{n_clients} client rows</div>'
+        # ── Clients block ─────────────────────────────────────────────────────
+        f'<div style="display:flex;border:1px solid rgba(22,163,74,0.28);'
+        f'border-radius:8px;overflow:hidden;height:38px">'
+        f'<div style="padding:0 14px;display:flex;align-items:center;'
+        f'background:rgba(22,163,74,0.05);font-size:0.67rem;color:#16a34a;'
+        f'letter-spacing:0.65px;text-transform:uppercase;font-weight:400;'
+        f'font-family:\'DM Sans\',sans-serif;white-space:nowrap">Clients</div>'
+        f'<div style="padding:0 18px;display:flex;align-items:center;'
+        f'background:rgba(22,163,74,0.1);font-size:1rem;font-weight:600;'
+        f'color:#16a34a;font-family:\'DM Sans\',sans-serif;'
+        f'border-left:1px solid rgba(22,163,74,0.2)">{n_clients}</div>'
+        f'</div>'
         f'</div></div>',
         unsafe_allow_html=True,
     )
@@ -1345,7 +1356,7 @@ def p2_results():
     )
     st.dataframe(summary, use_container_width=True, hide_index=True)
 
-    # ── Download badge — centered split badge ─────────────────────────────────
+    # ── Download badge - centered split badge ─────────────────────────────────
     st.markdown('<div style="height:1.2rem"></div>', unsafe_allow_html=True)
     alloc_bytes = write_allocation_file(allocation_df)
     alloc_b64   = base64.b64encode(alloc_bytes).decode()
@@ -1453,7 +1464,7 @@ def isin_page():
             key="isin_search",
             label_visibility="collapsed",
         )
-    # Live-search JS debounce — triggers Enter after 350 ms of inactivity
+    # Live-search JS debounce - triggers Enter after 350 ms of inactivity
     components.html(
         """
         <script>
@@ -1544,8 +1555,8 @@ def isin_page():
         else:
             try:
                 add_isin_entry(new_name, new_nse, new_bse, new_isin)
-                st.cache_data.clear()
-                st.success(f"✓  Added: {new_name or '—'}  ({new_isin.strip()})")
+                get_isin_db.clear()  # scoped clear - only evicts ISIN cache, not all caches
+                st.success(f"✓  Added: {new_name or '-'}  ({new_isin.strip()})")
                 st.rerun()
             except ValueError as e:
                 st.error(str(e))
@@ -1569,7 +1580,7 @@ def main():
                 var uploaders = doc.querySelectorAll('[data-testid="stFileUploader"]');
                 if (uploaders.length === 0) return;
 
-                // Pass 1 — stamp data-uploaded attribute
+                // Pass 1 - stamp data-uploaded attribute
                 uploaders.forEach(function(uploader) {
                     var dz = uploader.querySelector('[data-testid="stFileUploaderDropzone"]');
                     if (!dz) return;
@@ -1577,7 +1588,7 @@ def main():
                     dz.setAttribute('data-uploaded', hasFile ? 'true' : 'false');
                 });
 
-                // Pass 2 — find the tallest EMPTY-state dropzone
+                // Pass 2 - find the tallest EMPTY-state dropzone
                 var maxH = 0;
                 uploaders.forEach(function(uploader) {
                     var hasFile = !!uploader.querySelector('[data-testid="stFileUploaderFile"]');
@@ -1592,7 +1603,7 @@ def main():
                     }
                 });
 
-                // Pass 3 — force ALL dropzones to that height (uploaded ones won't
+                // Pass 3 - force ALL dropzones to that height (uploaded ones won't
                 // naturally reach it; empty ones already meet it via content)
                 if (maxH > 0) {
                     uploaders.forEach(function(uploader) {

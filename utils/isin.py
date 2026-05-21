@@ -25,29 +25,64 @@ def load_isin_database() -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
+# Lookup index - built once per session for O(1) lookups
+# ---------------------------------------------------------------------------
+
+def build_isin_index(db: pd.DataFrame) -> dict[str, str]:
+    """Build a flat uppercase ticker → ISIN dict for O(1) lookups.
+
+    NSE Code takes priority; BSE Code is inserted only where NSE Code is blank,
+    so NSE always wins when both exist for the same ISIN.
+
+    Args:
+        db: DataFrame from load_isin_database()
+
+    Returns:
+        dict mapping uppercase ticker → ISIN Code
+    """
+    index: dict[str, str] = {}
+    # BSE first (lower priority) - gets overwritten by NSE below
+    for _, row in db.iterrows():
+        bse = row["BSE Code"].strip().upper()
+        if bse:
+            index[bse] = row["ISIN Code"]
+    # NSE second (higher priority)
+    for _, row in db.iterrows():
+        nse = row["NSE Code"].strip().upper()
+        if nse:
+            index[nse] = row["ISIN Code"]
+    return index
+
+
+# ---------------------------------------------------------------------------
 # Lookup
 # ---------------------------------------------------------------------------
 
-def lookup_isin(ticker: str, db: pd.DataFrame) -> str | None:
+def lookup_isin(ticker: str, db: pd.DataFrame,
+                _index: dict[str, str] | None = None) -> str | None:
     """Look up ISIN for a given ticker symbol.
 
-    Tries NSE Code first (case-insensitive), then BSE Code as fallback.
+    Uses pre-built O(1) index when provided; falls back to DataFrame scan.
+    NSE Code match takes priority over BSE Code.
 
     Args:
         ticker: NSE/BSE ticker symbol (e.g. 'KOTAKBANK')
         db: ISIN database DataFrame from load_isin_database()
+        _index: optional pre-built dict from build_isin_index() for O(1) lookup
 
     Returns:
         ISIN string if found, None otherwise
     """
     ticker_upper = ticker.strip().upper()
 
-    # NSE Code match
+    if _index is not None:
+        return _index.get(ticker_upper)
+
+    # Fallback: DataFrame scan (used when index not available)
     nse_match = db[db["NSE Code"].str.upper() == ticker_upper]
     if not nse_match.empty:
         return nse_match.iloc[0]["ISIN Code"]
 
-    # BSE Code fallback
     bse_match = db[db["BSE Code"].str.upper() == ticker_upper]
     if not bse_match.empty:
         return bse_match.iloc[0]["ISIN Code"]

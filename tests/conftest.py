@@ -33,7 +33,7 @@ def sample_bank_book():
 
 @pytest.fixture
 def sample_scrip_df():
-    """Holdings for 3 clients — JIOFIN held, KOTAKBANK not held."""
+    """Holdings for 3 clients - JIOFIN held, KOTAKBANK not held."""
     return pd.DataFrame({
         "OFIN": ["OF001", "OF002", "OF003"],
         "Scrip Name": ["JIOFIN", "JIOFIN", "JIOFIN"],
