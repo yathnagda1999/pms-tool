@@ -241,14 +241,16 @@ h1, h2, h3, h4, .section-title {
     transform: none !important;
     box-shadow: none !important;
 }
-/* Secondary — outlined */
+/* Secondary — warm gold-outlined so it reads as a clickable button */
 [data-testid="baseButton-secondary"] {
-    background-color: #FFFFFF !important;
-    border-color: #D9B244 !important;
-    color: #1C1714 !important;
+    background: linear-gradient(180deg, #FEFCF6 0%, #F9F3E3 100%) !important;
+    border: 1.5px solid #D9B244 !important;
+    color: #7A5F1A !important;
 }
 [data-testid="baseButton-secondary"]:hover {
-    background-color: #FBF5E3 !important;
+    background: linear-gradient(180deg, #FBF5E3 0%, #F3EAD0 100%) !important;
+    border-color: #C4A03C !important;
+    color: #5C4812 !important;
 }
 
 /* ── Download button ──────────────────────────── */
@@ -451,6 +453,21 @@ h1, h2, h3, h4, .section-title {
 [data-testid="stDataEditor"] iframe {
     border: 1px solid #EAE3D8 !important;
     border-radius: 8px !important;
+}
+/* Darker column headers — target the header row overlay that sits above the canvas */
+[data-testid="stDataFrame"] [role="columnheader"],
+[data-testid="stDataEditor"] [role="columnheader"] {
+    background: #E8E0D2 !important;
+    color: #1C1714 !important;
+    font-weight: 500 !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 0.78rem !important;
+    letter-spacing: 0.2px !important;
+}
+[data-testid="stDataFrame"] [role="columnheader"] span,
+[data-testid="stDataEditor"] [role="columnheader"] span {
+    color: #1C1714 !important;
+    font-weight: 500 !important;
 }
 
 /* ── Checkbox — warm pill so it reads on white ── */
@@ -744,42 +761,73 @@ def p1_validate():
     vdf = st.session_state["validation_df"].copy()
     n_green = int((vdf["Status"] == "GREEN").sum())
     n_red   = int((vdf["Status"] == "RED").sum())
-    n_total = len(vdf)
-    n_tickers = vdf["Ticker"].nunique()
 
-    # ── Header + inline status pills ──────────────────────────────────────────
+    # ── Centred title ──────────────────────────────────────────────────────────
     st.markdown(
-        f'<div style="margin:0.3rem 0 1.4rem 0;display:flex;align-items:flex-end;'
-        f'gap:20px;flex-wrap:wrap">'
-        f'<div>'
-        f'<div style="font-family:\'Cormorant Garamond\',Georgia,serif;'
-        f'font-size:2rem;font-weight:600;color:#1C1714;line-height:1;margin-bottom:5px">'
-        f'Validate Orders</div>'
-        f'<div style="font-size:0.83rem;color:#958F87;font-family:\'DM Sans\',sans-serif;'
-        f'font-weight:300">{n_total} orders across {n_tickers} stocks — '
-        f'review and confirm before generating files.</div>'
-        f'</div>'
-        f'<div style="display:flex;gap:8px;padding-bottom:4px">'
-        f'<div style="background:rgba(22,163,74,0.07);border:1px solid rgba(22,163,74,0.22);'
-        f'border-radius:20px;padding:4px 14px;font-size:0.78rem;color:#16a34a;'
-        f'font-family:\'DM Sans\',sans-serif;font-weight:500;white-space:nowrap">'
-        f'✓ {n_green} ready</div>'
-        f'<div style="background:rgba(220,38,38,0.05);border:1px solid rgba(220,38,38,0.18);'
-        f'border-radius:20px;padding:4px 14px;font-size:0.78rem;color:#dc2626;'
-        f'font-family:\'DM Sans\',sans-serif;font-weight:500;white-space:nowrap">'
-        f'✕ {n_red} blocked</div>'
-        f'</div></div>',
+        '<div style="margin:0.3rem 0 1.2rem 0;text-align:center">'
+        '<div style="font-family:\'Cormorant Garamond\',Georgia,serif;'
+        'font-size:2rem;font-weight:600;color:#1C1714;line-height:1">'
+        'Validate Orders</div>'
+        '</div>',
         unsafe_allow_html=True,
     )
 
-    # ── Resolve button override BEFORE building editor_df ─────────────────────
+    # ── Resolve override BEFORE building editor_df ────────────────────────────
     override = st.session_state.pop("_include_override", None)
 
-    # Build editor DataFrame — includes Context (units held / available cash)
+    # ── Status bar: split-badge metrics (left) + Exclude buttons (right) ──────
+    col_status, col_actions = st.columns([5.5, 3.5])
+
+    with col_status:
+        st.markdown(
+            f'<div style="display:flex;align-items:center;gap:12px;padding-top:2px">'
+            # ── Orders Ready ──────────────────────────────────────────────────
+            f'<div style="display:flex;border:1px solid rgba(22,163,74,0.28);'
+            f'border-radius:8px;overflow:hidden;height:38px">'
+            f'<div style="padding:0 14px;display:flex;align-items:center;'
+            f'background:rgba(22,163,74,0.05);font-size:0.67rem;color:#16a34a;'
+            f'letter-spacing:0.65px;text-transform:uppercase;font-weight:400;'
+            f'font-family:\'DM Sans\',sans-serif;white-space:nowrap">Orders Ready</div>'
+            f'<div style="padding:0 18px;display:flex;align-items:center;'
+            f'background:rgba(22,163,74,0.1);font-size:1rem;font-weight:600;'
+            f'color:#16a34a;font-family:\'DM Sans\',sans-serif;'
+            f'border-left:1px solid rgba(22,163,74,0.2)">{n_green}</div>'
+            f'</div>'
+            # ── Orders Blocked ────────────────────────────────────────────────
+            f'<div style="display:flex;border:1px solid rgba(220,38,38,0.22);'
+            f'border-radius:8px;overflow:hidden;height:38px">'
+            f'<div style="padding:0 14px;display:flex;align-items:center;'
+            f'background:rgba(220,38,38,0.04);font-size:0.67rem;color:#dc2626;'
+            f'letter-spacing:0.65px;text-transform:uppercase;font-weight:400;'
+            f'font-family:\'DM Sans\',sans-serif;white-space:nowrap">Orders Blocked</div>'
+            f'<div style="padding:0 18px;display:flex;align-items:center;'
+            f'background:rgba(220,38,38,0.09);font-size:1rem;font-weight:600;'
+            f'color:#dc2626;font-family:\'DM Sans\',sans-serif;'
+            f'border-left:1px solid rgba(220,38,38,0.15)">{n_red}</div>'
+            f'</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+    with col_actions:
+        btn1, btn2 = st.columns(2)
+        with btn1:
+            if st.button("Exclude all red", key="p1_excl_red", use_container_width=True):
+                st.session_state["_include_override"] = "red_out"
+                st.rerun()
+        with btn2:
+            if st.button("Exclude entire batch", key="p1_excl_all", use_container_width=True):
+                st.session_state["_include_override"] = "all_out"
+                st.rerun()
+
+    st.markdown('<div style="height:0.5rem"></div>', unsafe_allow_html=True)
+
+    # ── Build editor DataFrame — Context before Reason ────────────────────────
     context_col = "Context" if "Context" in vdf.columns else None
-    base_cols = ["S.No", "Client", "Ticker", "Direction", "Qty", "Ref Price", "Status", "Reason"]
+    base_cols = ["S.No", "Client", "Ticker", "Direction", "Qty", "Ref Price", "Status"]
     if context_col:
-        base_cols.append(context_col)
+        base_cols.append(context_col)   # Context sits before Reason
+    base_cols.append("Reason")
     editor_df = vdf[base_cols].copy()
     if context_col:
         editor_df.rename(columns={"Context": "Units Held / Cash"}, inplace=True)
@@ -790,47 +838,59 @@ def p1_validate():
     elif override == "all_out":
         editor_df["Include"] = False
 
-    # ── Action buttons (above table) ──────────────────────────────────────────
-    ab1, ab2, ab_space = st.columns([1.3, 1.6, 6])
-    with ab1:
-        if st.button("Exclude all red", key="p1_excl_red", use_container_width=True):
-            st.session_state["_include_override"] = "red_out"
-            st.rerun()
-    with ab2:
-        if st.button("Exclude entire batch", key="p1_excl_all", use_container_width=True):
-            st.session_state["_include_override"] = "all_out"
-            st.rerun()
+    # ── Split table: narrow checkbox editor (left) + colour-styled display (right)
+    # Both use auto-height (no cap) so the PAGE scrolls — keeps rows in visual sync.
+    col_check, col_table = st.columns([0.7, 8.3])
 
-    st.markdown('<div style="height:0.4rem"></div>', unsafe_allow_html=True)
+    with col_check:
+        check_df = editor_df[["Include"]].copy()
+        edited_check = st.data_editor(
+            check_df,
+            column_config={
+                "Include": st.column_config.CheckboxColumn("", default=True, width="small"),
+            },
+            hide_index=True,
+            use_container_width=True,
+            key="p1_editor_check",
+        )
 
-    # ── Editable table ────────────────────────────────────────────────────────
-    col_cfg = {
-        "Include":        st.column_config.CheckboxColumn("✓", default=True, width="small"),
-        "S.No":           st.column_config.NumberColumn("No.", width="small"),
-        "Client":         st.column_config.TextColumn("Client", width="medium"),
-        "Ticker":         st.column_config.TextColumn("Ticker", width="small"),
-        "Direction":      st.column_config.TextColumn("Dir", width="small"),
-        "Qty":            st.column_config.NumberColumn("Qty", width="small"),
-        "Ref Price":      st.column_config.NumberColumn("Ref Price", format="%.2f", width="small"),
-        "Status":         st.column_config.TextColumn("Status", disabled=True, width="small"),
-        "Reason":         st.column_config.TextColumn("Reason", disabled=True, width="large"),
-        "Units Held / Cash": st.column_config.TextColumn("Context", disabled=True, width="medium"),
-    }
-    disabled_cols = [c for c in editor_df.columns if c != "Include"]
+    with col_table:
+        display_df = editor_df.drop(columns=["Include"])
 
-    edited = st.data_editor(
-        editor_df,
-        column_config=col_cfg,
-        disabled=disabled_cols,
-        hide_index=True,
-        use_container_width=True,
-        key="p1_editor",
-    )
+        def _row_style(row):
+            colour = (
+                "rgba(22,163,74,0.07)" if row["Status"] == "GREEN"
+                else "rgba(220,38,38,0.06)"
+            )
+            return [f"background-color: {colour}"] * len(row)
 
-    red_included = int(((edited["Include"] == True) & (vdf["Status"] == "RED")).sum())
-    n_included   = int(edited["Include"].sum())
+        styled_df = (
+            display_df.style
+            .apply(_row_style, axis=1)
+            .format({"Status": lambda v: "READY" if v == "GREEN" else "BLOCKED"})
+        )
 
-    # Inline error if red rows are still checked
+        st.dataframe(
+            styled_df,
+            column_config={
+                "S.No":              st.column_config.NumberColumn("No.", width="small"),
+                "Client":            st.column_config.TextColumn("Client", width="medium"),
+                "Ticker":            st.column_config.TextColumn("Ticker", width="small"),
+                "Direction":         st.column_config.TextColumn("Dir", width="small"),
+                "Qty":               st.column_config.NumberColumn("Qty", width="small"),
+                "Ref Price":         st.column_config.NumberColumn("Ref Price", format="%.2f", width="small"),
+                "Status":            st.column_config.TextColumn("Status", width="small"),
+                "Units Held / Cash": st.column_config.TextColumn("Available / Held", width="medium"),
+                "Reason":            st.column_config.TextColumn("Reason", width="large"),
+            },
+            hide_index=True,
+            use_container_width=True,
+        )
+
+    red_included = int(((edited_check["Include"] == True) & (vdf["Status"] == "RED")).sum())
+    n_included   = int(edited_check["Include"].sum())
+
+    # Inline warning if blocked rows are still checked
     if red_included > 0:
         st.markdown(
             f'<div style="background:rgba(220,38,38,0.05);'
@@ -842,11 +902,62 @@ def p1_validate():
             unsafe_allow_html=True,
         )
 
-    # Caption: red rows cannot be fixed here
-    if n_red > 0:
-        st.caption("Red rows cannot be included — fix the underlying issue and re-upload the research file.")
+    # ── JS: semantic Exclude button colours + sticky action bar ──────────────
+    components.html("""
+    <script>
+    (function() {
+        function applyValidateStyles() {
+            try {
+                var doc = window.parent.document;
 
-    # ── Bottom action row ─────────────────────────────────────────────────────
+                // 1. Semantic colours for the two Exclude buttons
+                doc.querySelectorAll('button').forEach(function(btn) {
+                    var t = btn.textContent.trim();
+                    if (t === 'Exclude all red') {
+                        btn.style.setProperty('background', 'rgba(220,38,38,0.08)', 'important');
+                        btn.style.setProperty('border', '1.5px solid rgba(220,38,38,0.38)', 'important');
+                        btn.style.setProperty('color', '#b91c1c', 'important');
+                    } else if (t === 'Exclude entire batch') {
+                        btn.style.setProperty('background', 'rgba(28,23,20,0.07)', 'important');
+                        btn.style.setProperty('border', '1.5px solid rgba(28,23,20,0.3)', 'important');
+                        btn.style.setProperty('color', '#1C1714', 'important');
+                    }
+                });
+
+                // 2. Sticky bottom action bar (only when styled dataframe is present)
+                if (!doc.querySelector('[data-testid="stDataFrame"]')) return;
+                var backBtn = null;
+                doc.querySelectorAll('button').forEach(function(btn) {
+                    if (btn.textContent.trim() === '← Back') backBtn = btn;
+                });
+                if (!backBtn) return;
+                var hBlock = backBtn.closest('[data-testid="stHorizontalBlock"]');
+                if (!hBlock) return;
+                var wrap = hBlock.parentElement;
+                if (!wrap || wrap.dataset.stickyDone) return;
+                wrap.dataset.stickyDone = '1';
+                wrap.style.setProperty('position', 'sticky', 'important');
+                wrap.style.setProperty('bottom', '0', 'important');
+                wrap.style.setProperty('background', '#FFFFFF', 'important');
+                wrap.style.setProperty('z-index', '200', 'important');
+                wrap.style.setProperty('border-top', '1px solid #EAE3D8', 'important');
+                wrap.style.setProperty('padding-top', '10px', 'important');
+                wrap.style.setProperty('padding-bottom', '6px', 'important');
+                wrap.style.setProperty('box-shadow', '0 -4px 16px rgba(0,0,0,0.05)', 'important');
+            } catch(e) {}
+        }
+        try {
+            new MutationObserver(function() {
+                setTimeout(applyValidateStyles, 80);
+            }).observe(window.parent.document.body, {childList: true, subtree: true});
+        } catch(e) {}
+        setInterval(applyValidateStyles, 600);
+        setTimeout(applyValidateStyles, 300);
+    })();
+    </script>
+    """, height=0)
+
+    # ── Bottom action row (becomes sticky via JS above) ───────────────────────
     st.markdown('<div style="height:1rem"></div>', unsafe_allow_html=True)
     col_back, _, col_gen = st.columns([1, 4.5, 2])
 
@@ -864,7 +975,7 @@ def p1_validate():
         if st.button(gen_label, type="primary", disabled=not can_generate,
                      key="p1_gen_btn", use_container_width=True):
             with st.spinner("Building session file and broker file..."):
-                included_idx = edited[edited["Include"] == True].index
+                included_idx = edited_check[edited_check["Include"] == True].index
                 included_df  = vdf.loc[included_idx].copy()
 
                 session_df = build_session_file(
