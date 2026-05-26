@@ -2,6 +2,7 @@
 Input file readers for all PMS tool formats.
 All functions accept a file-like object (BytesIO or UploadedFile).
 All column lookups are dynamic - never hardcoded by index.
+Both .xls and .xlsx formats are accepted for every file.
 """
 from io import BytesIO
 
@@ -10,23 +11,78 @@ import xlrd
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Low-level helpers
 # ---------------------------------------------------------------------------
+
+def _read_file_bytes(file) -> bytes:
+    """Read a file-like object or bytes into raw bytes."""
+    if hasattr(file, "read"):
+        return file.read()
+    return file
+
+
+def _is_xls(content: bytes) -> bool:
+    """Return True if content is an OLE2 (.xls) file, False for ZIP (.xlsx)."""
+    return content[:4] == b'\xd0\xcf\x11\xe0'
+
+
+def _get_sheet_rows(content: bytes, sheet_name: str) -> list[tuple]:
+    """Return all rows from a named sheet as a list of tuples.
+
+    Auto-detects .xls (xlrd) vs .xlsx (openpyxl) from magic bytes.
+    Raises ValueError with helpful message if sheet not found.
+
+    Args:
+        content: raw file bytes
+        sheet_name: name of the sheet to read
+
+    Returns:
+        list of row tuples
+    """
+    if _is_xls(content):
+        wb = xlrd.open_workbook(file_contents=content)
+        if sheet_name not in wb.sheet_names():
+            raise ValueError(
+                f"Could not find sheet '{sheet_name}'. "
+                f"Sheets found in this file: {wb.sheet_names()}. "
+                f"Please check you uploaded the correct file."
+            )
+        ws = wb.sheet_by_name(sheet_name)
+        return [
+            tuple(ws.cell_value(i, j) for j in range(ws.ncols))
+            for i in range(ws.nrows)
+        ]
+    else:
+        import openpyxl
+        wb = openpyxl.load_workbook(BytesIO(content), data_only=True)
+        if sheet_name not in wb.sheetnames:
+            raise ValueError(
+                f"Could not find sheet '{sheet_name}'. "
+                f"Sheets found in this file: {wb.sheetnames}. "
+                f"Please check you uploaded the correct file."
+            )
+        return list(wb[sheet_name].iter_rows(values_only=True))
+
+
+def _pd_read_excel(content: bytes, sheet_name: str, **kwargs) -> pd.DataFrame:
+    """Read a sheet into a DataFrame using the correct engine for xls/xlsx.
+
+    Args:
+        content: raw file bytes
+        sheet_name: sheet to read
+        **kwargs: passed directly to pd.read_excel
+
+    Returns:
+        pd.DataFrame
+    """
+    engine = "xlrd" if _is_xls(content) else "openpyxl"
+    return pd.read_excel(BytesIO(content), sheet_name=sheet_name,
+                         engine=engine, **kwargs)
+
 
 def _normalise_ofin(series: pd.Series) -> pd.Series:
     """Cast OFIN to string, strip whitespace."""
     return series.astype(str).str.strip()
-
-
-def _find_sheet(wb_sheets: list[str], expected: str) -> str:
-    """Return expected sheet name or raise ValueError with helpful message."""
-    if expected in wb_sheets:
-        return expected
-    raise ValueError(
-        f"Could not find sheet '{expected}'. "
-        f"Sheets found in this file: {wb_sheets}. "
-        f"Please check you uploaded the correct file."
-    )
 
 
 def _require_columns(df: pd.DataFrame, required: list[str], source: str) -> None:
@@ -46,28 +102,163 @@ def _require_columns(df: pd.DataFrame, required: list[str], source: str) -> None
 RESEARCH_REQUIRED = ["S.No", "OFIN", "Client", "Ticker", "Direction",
                      "Qty", "Ref Price", "Value", "CP Code"]
 
+# Accepted aliases for each standard column name (case-insensitive, stripped)
+_RESEARCH_ALIASES = {
+    "S.No":      ["S.No", "S.NO", "SNO", "SR NO", "SR. NO"],
+    "OFIN":      ["OFIN", "OFIN Code", "OFIN CODE"],
+    "Client":    ["Client", "Client Name"],
+    "Ticker":    ["Ticker", "Stock"],
+    "Direction": ["Direction", "Action"],
+    "Qty":       ["Qty", "Quantity"],
+    "Ref Price": ["Ref Price", "Price"],
+    "Value":     ["Value", "Amount"],
+    "CP Code":   ["CP Code", "CP CODE"],
+}
+
+# Flat uppercase set for quick header-row detection
+_RESEARCH_ALIAS_SET = {
+    alias.upper()
+    for aliases in _RESEARCH_ALIASES.values()
+    for alias in aliases
+}
+
+
+def _get_research_sheet_rows(content: bytes) -> list[tuple]:
+    """Find and return rows from the research sheet in xls/xlsx content.
+
+    Tries 'Orders' first. If not found, scans all sheets and picks the one
+    whose first 10 rows contain the most research column alias matches.
+    This handles any sheet name the research team may use.
+
+    Args:
+        content: raw file bytes
+
+    Returns:
+        list of row tuples from the best-matching sheet
+
+    Raises:
+        ValueError: if no sheet with research columns is found
+    """
+    if _is_xls(content):
+        wb = xlrd.open_workbook(file_contents=content)
+        sheet_names = wb.sheet_names()
+        get_rows = lambda name: [
+            tuple(wb.sheet_by_name(name).cell_value(i, j)
+                  for j in range(wb.sheet_by_name(name).ncols))
+            for i in range(wb.sheet_by_name(name).nrows)
+        ]
+    else:
+        import openpyxl
+        wb = openpyxl.load_workbook(BytesIO(content), data_only=True)
+        sheet_names = wb.sheetnames
+        get_rows = lambda name: list(wb[name].iter_rows(values_only=True))
+
+    # Try 'Orders' first
+    if "Orders" in sheet_names:
+        return get_rows("Orders")
+
+    # Scan all sheets - pick the one with the most alias matches in first 10 rows
+    best_sheet, best_score = None, 0
+    for name in sheet_names:
+        rows = get_rows(name)
+        score = 0
+        for row in rows[:10]:
+            row_vals = [str(v).strip().upper() for v in row if v is not None]
+            score = max(score, sum(1 for v in row_vals if v in _RESEARCH_ALIAS_SET))
+        if score > best_score:
+            best_score, best_sheet = score, name
+            best_rows = rows
+
+    if best_sheet is None or best_score < 4:
+        raise ValueError(
+            f"Research file: could not find a sheet with order data. "
+            f"Sheets found: {sheet_names}. "
+            f"Expected columns like 'Ticker'/'Stock', 'OFIN'/'OFIN Code', 'Qty', 'Direction'/'Action'."
+        )
+
+    return best_rows
+
+
+def _find_research_header_row(rows: list) -> int:
+    """Scan rows top-down to find the header row.
+
+    The header row is the first row where at least 4 cells match known
+    research file column aliases. Handles empty rows at the top of the sheet.
+
+    Args:
+        rows: all rows from the worksheet
+
+    Returns:
+        index of the header row
+
+    Raises:
+        ValueError: if no header row found
+    """
+    for i, row in enumerate(rows):
+        row_vals = [str(v).strip().upper() for v in row if v is not None]
+        matches = sum(1 for v in row_vals if v in _RESEARCH_ALIAS_SET)
+        if matches >= 4:
+            return i
+    raise ValueError(
+        "Research file: could not find a header row. "
+        "Expected columns like 'S.No', 'OFIN'/'OFIN Code', "
+        "'Ticker'/'Stock', 'Direction'/'Action', 'Qty', 'Price'/'Ref Price'."
+    )
+
+
+def _map_research_headers(raw_headers: list) -> list:
+    """Map raw header names to internal standard names via alias dict.
+
+    Strips whitespace and matches case-insensitively. Unknown headers are
+    kept as-is (extra columns are harmless).
+
+    Args:
+        raw_headers: list of raw cell values from the header row
+
+    Returns:
+        list of standardised column names
+    """
+    result = []
+    for h in raw_headers:
+        h_clean = str(h).strip() if h is not None else ""
+        h_upper = h_clean.upper()
+        standard = h_clean  # default: keep as-is
+        for std_name, aliases in _RESEARCH_ALIASES.items():
+            if h_upper in [a.upper() for a in aliases]:
+                standard = std_name
+                break
+        result.append(standard)
+    return result
+
 
 def read_research_file(file) -> pd.DataFrame:
     """Parse the research team Excel order file.
 
+    Accepts .xls and .xlsx. Handles:
+    - Empty rows at the top of the sheet (header row auto-detected)
+    - Two column naming formats (e.g. 'Ticker'/'Stock', 'OFIN'/'OFIN Code')
+    - Extra whitespace around column headers
+    - Any column order
+
     Args:
-        file: BytesIO or Streamlit UploadedFile (.xlsx)
+        file: BytesIO or Streamlit UploadedFile (.xls or .xlsx)
 
     Returns:
         pd.DataFrame with columns matching RESEARCH_REQUIRED.
         Direction normalised to uppercase. All strings stripped.
     """
-    import openpyxl
-    wb = openpyxl.load_workbook(file, data_only=True)
-    _find_sheet(wb.sheetnames, "Orders")
-    ws = wb["Orders"]
+    content = _read_file_bytes(file)
+    rows = _get_research_sheet_rows(content)
 
-    rows = list(ws.iter_rows(values_only=True))
     if not rows:
         raise ValueError("Research file 'Orders' sheet is empty.")
 
-    headers = [str(h).strip() if h is not None else "" for h in rows[0]]
-    data = rows[1:]
+    # Auto-detect header row (handles empty rows at top)
+    header_row_idx = _find_research_header_row(rows)
+
+    # Map raw headers to standard names
+    headers = _map_research_headers(rows[header_row_idx])
+    data = rows[header_row_idx + 1:]
     df = pd.DataFrame(data, columns=headers)
 
     # Drop completely empty rows
@@ -94,18 +285,16 @@ def read_research_file(file) -> pd.DataFrame:
 def read_bank_book(file) -> dict[str, float]:
     """Parse the Orbis Bank Balance Summary sheet.
 
+    Accepts .xls and .xlsx - format auto-detected from magic bytes.
+
     Args:
-        file: BytesIO or Streamlit UploadedFile (.xlsx)
+        file: BytesIO or Streamlit UploadedFile (.xls or .xlsx)
 
     Returns:
-        dict mapping OFIN (str) → cash balance (float)
+        dict mapping OFIN (str) -> cash balance (float)
     """
-    import openpyxl
-    wb = openpyxl.load_workbook(file, data_only=True)
-    _find_sheet(wb.sheetnames, "Bank Balance Summary")
-    ws = wb["Bank Balance Summary"]
-
-    rows = list(ws.iter_rows(values_only=True))
+    content = _read_file_bytes(file)
+    rows = _get_sheet_rows(content, "Bank Balance Summary")
 
     # Locate header row dynamically - find row containing "OFIN Code"
     header_row_idx = None
@@ -126,15 +315,13 @@ def read_bank_book(file) -> dict[str, float]:
             "Please check you uploaded the correct file."
         )
 
-    # Identify "Total" marker column (same row as Balance, typically IFSC column)
-    # Total rows have the word "Total" somewhere in non-OFIN, non-Balance columns
     bank_book: dict[str, float] = {}
     current_ofin: str | None = None
 
     for row in rows[header_row_idx + 1:]:
-        row_vals = [v for v in row]
+        row_vals = list(row)
 
-        # Check if this is a "Total" row - look for "Total" text in any cell
+        # Skip "Total" rows
         is_total = any(
             str(v).strip().lower() == "total"
             for v in row_vals
@@ -144,7 +331,7 @@ def read_bank_book(file) -> dict[str, float]:
             continue
 
         # Skip empty rows
-        if all(v is None for v in row_vals):
+        if all(v is None or str(v).strip() == "" for v in row_vals):
             continue
 
         # Data row: read OFIN and balance
@@ -164,44 +351,45 @@ def read_bank_book(file) -> dict[str, float]:
 
 
 # ---------------------------------------------------------------------------
-# Orbis Scrip-wise Report (.xls)
+# Orbis Scrip-wise Report
 # ---------------------------------------------------------------------------
 
 def read_scrip_wise_report(file) -> pd.DataFrame:
-    """Parse the Orbis Scripwise Clientwise Valuation Report (.xls).
+    """Parse the Orbis Scripwise Clientwise Valuation Report.
+
+    Accepts .xls and .xlsx - format auto-detected from magic bytes.
 
     Args:
-        file: BytesIO or Streamlit UploadedFile (.xls)
+        file: BytesIO or Streamlit UploadedFile (.xls or .xlsx)
 
     Returns:
         pd.DataFrame with columns [OFIN, Scrip Name, ISIN, Quantity]
     """
-    if hasattr(file, "read"):
-        content = file.read()
+    content = _read_file_bytes(file)
+
+    # Sheet name changes daily (first client's name) - always use first sheet
+    if _is_xls(content):
+        wb = xlrd.open_workbook(file_contents=content)
+        ws = wb.sheet_by_index(0)
+        rows = [
+            tuple(ws.cell_value(i, j) for j in range(ws.ncols))
+            for i in range(ws.nrows)
+        ]
     else:
-        content = file
-
-    wb = xlrd.open_workbook(file_contents=content)
-
-    sheet_names = wb.sheet_names()
-    if "file" not in sheet_names:
-        raise ValueError(
-            f"Scrip-wise Report: could not find sheet 'file'. "
-            f"Sheets found: {sheet_names}. Please check the correct file."
-        )
-
-    ws = wb.sheet_by_name("file")
+        import openpyxl
+        wb = openpyxl.load_workbook(BytesIO(content), data_only=True)
+        ws = wb[wb.sheetnames[0]]
+        rows = list(ws.iter_rows(values_only=True))
 
     # Locate header row - find row containing "Scrip Name"
     header_row_idx = None
     col_scrip = col_isin = col_client_code = col_qty = None
 
-    for i in range(ws.nrows):
-        row_vals = [str(ws.cell_value(i, j)).strip() for j in range(ws.ncols)]
+    for i, row in enumerate(rows):
+        row_vals = [str(v).strip() for v in row]
         if "Scrip Name" in row_vals:
             header_row_idx = i
             col_scrip = row_vals.index("Scrip Name")
-            # ISIN is labelled "Item No" in this report
             col_isin = row_vals.index("Item No") if "Item No" in row_vals else None
             col_client_code = row_vals.index("Client Code") if "Client Code" in row_vals else None
             col_qty = row_vals.index("Quantity") if "Quantity" in row_vals else None
@@ -218,21 +406,20 @@ def read_scrip_wise_report(file) -> pd.DataFrame:
         )
 
     records = []
-    for i in range(header_row_idx + 1, ws.nrows):
-        scrip_val = str(ws.cell_value(i, col_scrip)).strip()
+    for row in rows[header_row_idx + 1:]:
+        scrip_val = str(row[col_scrip]).strip()
 
         # Skip "Scrip Total" rows and empty rows
         if scrip_val.lower() == "scrip total" or not scrip_val:
             continue
 
-        # Skip if entire row is empty
-        row_vals = [ws.cell_value(i, j) for j in range(ws.ncols)]
-        if all(v == "" or v is None for v in row_vals):
+        # Skip entirely empty rows
+        if all(v is None or str(v).strip() == "" for v in row):
             continue
 
-        isin_val = str(ws.cell_value(i, col_isin)).strip()
-        client_code_val = str(ws.cell_value(i, col_client_code)).strip()
-        qty_val = ws.cell_value(i, col_qty)
+        isin_val = str(row[col_isin]).strip()
+        client_code_val = str(row[col_client_code]).strip()
+        qty_val = row[col_qty]
 
         try:
             qty_float = float(qty_val)
@@ -263,13 +450,16 @@ SESSION_REQUIRED = ["S.No", "Batch", "OFIN", "Client", "Ticker",
 def read_session_file(file) -> pd.DataFrame:
     """Read an existing session file.
 
+    Accepts .xls and .xlsx - format auto-detected from magic bytes.
+
     Args:
-        file: BytesIO or Streamlit UploadedFile (.xlsx)
+        file: BytesIO or Streamlit UploadedFile (.xls or .xlsx)
 
     Returns:
         pd.DataFrame with SESSION_REQUIRED columns
     """
-    df = pd.read_excel(file, engine="openpyxl", dtype=str)
+    content = _read_file_bytes(file)
+    df = _pd_read_excel(content, sheet_name=0, dtype=str)
     df.columns = [c.strip() for c in df.columns]
     _require_columns(df, SESSION_REQUIRED, "Session file")
     df["OFIN"] = _normalise_ofin(df["OFIN"])
@@ -292,18 +482,18 @@ AMBIT_REQUIRED = ["Transaction Date", "Exchange", "ISIN No.", "Transaction Type"
 def read_broker_reply_ambit(file) -> pd.DataFrame:
     """Parse Ambit broker execution reply.
 
+    Accepts .xls and .xlsx - format auto-detected from magic bytes.
+
     Args:
-        file: BytesIO or Streamlit UploadedFile (.xlsx)
+        file: BytesIO or Streamlit UploadedFile (.xls or .xlsx)
 
     Returns:
         pd.DataFrame with normalised column names
     """
-    import openpyxl
-    wb = openpyxl.load_workbook(file, data_only=True)
-    _find_sheet(wb.sheetnames, "Sheet1")
-    file.seek(0)  # reset pointer after openpyxl read, before pd.read_excel
-
-    df = pd.read_excel(file, sheet_name="Sheet1", engine="openpyxl")
+    content = _read_file_bytes(file)
+    # Validate sheet exists before reading into DataFrame
+    _get_sheet_rows(content, "Sheet1")
+    df = _pd_read_excel(content, sheet_name="Sheet1")
     df.columns = [str(c).strip() for c in df.columns]
     _require_columns(df, AMBIT_REQUIRED, "Ambit broker reply")
     return df
@@ -322,20 +512,19 @@ INCRED_REQUIRED = ["Exchange", "ISIN No.", "Transaction Type", "Quantity",
 def read_broker_reply_incred(file) -> pd.DataFrame:
     """Parse InCred broker execution reply.
 
+    Accepts .xls and .xlsx - format auto-detected from magic bytes.
     Handles string-typed numeric columns and empty GST Amount.
 
     Args:
-        file: BytesIO or Streamlit UploadedFile (.xlsx)
+        file: BytesIO or Streamlit UploadedFile (.xls or .xlsx)
 
     Returns:
         pd.DataFrame with all numeric columns cast to float
     """
-    import openpyxl
-    wb = openpyxl.load_workbook(file, data_only=True)
-    _find_sheet(wb.sheetnames, INCRED_SHEET)
-    file.seek(0)  # reset pointer after openpyxl read, before pd.read_excel
-
-    df = pd.read_excel(file, sheet_name=INCRED_SHEET, engine="openpyxl", dtype=str)
+    content = _read_file_bytes(file)
+    # Validate sheet exists before reading into DataFrame
+    _get_sheet_rows(content, INCRED_SHEET)
+    df = _pd_read_excel(content, sheet_name=INCRED_SHEET, dtype=str)
     df.columns = [str(c).strip() for c in df.columns]
     _require_columns(df, INCRED_REQUIRED, "InCred broker reply")
 
@@ -345,7 +534,7 @@ def read_broker_reply_incred(file) -> pd.DataFrame:
     for col in str_to_float_cols:
         df[col] = pd.to_numeric(df[col].str.strip(), errors="coerce").fillna(0.0)
 
-    # GST Amount: empty string → 0.0
+    # GST Amount: empty string -> 0.0
     df["GST Amount"] = pd.to_numeric(
         df["GST Amount"].astype(str).str.strip().replace("", "0"),
         errors="coerce"

@@ -2,6 +2,7 @@
 ISIN database read/write/lookup utilities.
 Persists to data/isin_database.csv on the server.
 """
+import re
 from pathlib import Path
 import pandas as pd
 
@@ -88,6 +89,89 @@ def lookup_isin(ticker: str, db: pd.DataFrame,
         return bse_match.iloc[0]["ISIN Code"]
 
     return None
+
+
+# ---------------------------------------------------------------------------
+# Name-based fuzzy lookup (fallback for full company names in research file)
+# ---------------------------------------------------------------------------
+
+# Common suffixes/words that don't help disambiguate companies
+_NAME_STOP_WORDS = {
+    "LTD", "LIMITED", "SERVICES", "SERVICE", "CORP", "CORPORATION",
+    "INC", "CO", "THE", "AND", "OF", "PVT", "PRIVATE", "PUBLIC", "GROUP",
+    "ENTERPRISES", "ENTERPRISE", "INDIA", "INDIAN", "HOLDINGS", "HOLDING",
+}
+
+
+def _name_tokens(s: str) -> list[str]:
+    """Tokenize a company name for fuzzy matching.
+
+    Strips punctuation, uppercases, removes single-char tokens and stop words.
+    """
+    cleaned = re.sub(r"[^A-Z0-9\s]", " ", s.strip().upper())
+    return [t for t in cleaned.split() if len(t) >= 2 and t not in _NAME_STOP_WORDS]
+
+
+def lookup_isin_by_name(company_name: str, db: pd.DataFrame) -> str | None:
+    """Find ISIN by fuzzy company name match.
+
+    Used as a last-resort fallback when the ticker is a full company name
+    (e.g. 'AU SMALL FINANCE BANK LTD') rather than an NSE/BSE code.
+
+    Algorithm: tokenize both names (strip punctuation, remove stop words),
+    then check whether every token in the *shorter* list is a prefix of at
+    least one token in the *longer* list. Requires >= 2 tokens to avoid
+    false positives on short names.
+
+    Examples that resolve correctly:
+      'AU SMALL FINANCE BANK LTD'       -> 'AU Small Finance'    -> AUBANK ISIN
+      'BAJAJ FINANCE LTD'               -> 'Bajaj Finance'       -> BAJFINANCE ISIN
+      'HDFC BANK LTD'                   -> 'HDFC Bank'           -> HDFCBANK ISIN
+      'MOTILAL OSWAL FINANCIAL...'      -> 'Motil.Oswal.Fin.'    -> MOTILALOFS ISIN
+
+    Args:
+        company_name: full or abbreviated company name from research file
+        db: ISIN database DataFrame from load_isin_database()
+
+    Returns:
+        ISIN string if a confident match is found, None if no match or ambiguous
+    """
+    research_tokens = _name_tokens(company_name)
+    if not research_tokens:
+        return None
+
+    best_isin: str | None = None
+    best_score: float = 0.0
+
+    for _, row in db.iterrows():
+        db_tokens = _name_tokens(str(row["Name"]))
+        if not db_tokens:
+            continue
+
+        # Compare shorter list against longer list (prefix match)
+        if len(db_tokens) <= len(research_tokens):
+            shorter, longer = db_tokens, research_tokens
+        else:
+            shorter, longer = research_tokens, db_tokens
+
+        # Need >= 2 tokens, OR exactly 1 token that is >= 5 chars (long enough
+        # to be distinctive, e.g. "INFOSYS" but not "TCS" which is an NSE code)
+        if not shorter or (len(shorter) == 1 and len(shorter[0]) < 5):
+            continue
+
+        # Every token in the shorter list must prefix-match a token in the longer list
+        matched = sum(
+            1 for st in shorter if any(lt.startswith(st) for lt in longer)
+        )
+        if matched < len(shorter):
+            continue
+
+        score = matched / max(len(db_tokens), len(research_tokens))
+        if score > best_score:
+            best_score = score
+            best_isin = row["ISIN Code"]
+
+    return best_isin
 
 
 # ---------------------------------------------------------------------------

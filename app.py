@@ -655,28 +655,28 @@ def p1_upload():
         _, col1, _, col2, _, col3, _ = st.columns(_CARD_COLS)
         with col1:
             st.markdown('<div class="upload-label">Research Team File <span class="upload-required">*</span></div>', unsafe_allow_html=True)
-            research_file = st.file_uploader("Research Team File", type=["xlsx"], key="p1_research", label_visibility="collapsed")
+            research_file = st.file_uploader("Research Team File", type=["xlsx", "xls"], key="p1_research", label_visibility="collapsed")
         with col2:
             st.markdown('<div class="upload-label">Orbis Bank Book <span class="upload-required">*</span></div>', unsafe_allow_html=True)
-            bank_file = st.file_uploader("Orbis Bank Book", type=["xlsx"], key="p1_bank", label_visibility="collapsed")
+            bank_file = st.file_uploader("Orbis Bank Book", type=["xlsx", "xls"], key="p1_bank", label_visibility="collapsed")
         with col3:
             st.markdown('<div class="upload-label">Scrip-wise Report <span class="upload-required">*</span></div>', unsafe_allow_html=True)
-            scrip_file = st.file_uploader("Scrip-wise Report", type=["xls"], key="p1_scrip", label_visibility="collapsed")
+            scrip_file = st.file_uploader("Scrip-wise Report", type=["xlsx", "xls"], key="p1_scrip", label_visibility="collapsed")
     else:
         _CARD_COLS = [0.5, 2, 0.32, 2, 0.32, 2, 0.32, 2, 0.5]
         _, col1, _, col2, _, col3, _, col4, _ = st.columns(_CARD_COLS)
         with col1:
             st.markdown('<div class="upload-label">Research Team File <span class="upload-required">*</span></div>', unsafe_allow_html=True)
-            research_file = st.file_uploader("Research Team File", type=["xlsx"], key="p1_research", label_visibility="collapsed")
+            research_file = st.file_uploader("Research Team File", type=["xlsx", "xls"], key="p1_research", label_visibility="collapsed")
         with col2:
             st.markdown('<div class="upload-label">Orbis Bank Book <span class="upload-required">*</span></div>', unsafe_allow_html=True)
-            bank_file = st.file_uploader("Orbis Bank Book", type=["xlsx"], key="p1_bank", label_visibility="collapsed")
+            bank_file = st.file_uploader("Orbis Bank Book", type=["xlsx", "xls"], key="p1_bank", label_visibility="collapsed")
         with col3:
             st.markdown('<div class="upload-label">Scrip-wise Report <span class="upload-required">*</span></div>', unsafe_allow_html=True)
-            scrip_file = st.file_uploader("Scrip-wise Report", type=["xls"], key="p1_scrip", label_visibility="collapsed")
+            scrip_file = st.file_uploader("Scrip-wise Report", type=["xlsx", "xls"], key="p1_scrip", label_visibility="collapsed")
         with col4:
             st.markdown('<div class="upload-label">Existing Session File <span class="upload-required">*</span></div>', unsafe_allow_html=True)
-            existing_file = st.file_uploader("Existing Session File", type=["xlsx"], key="p1_existing", label_visibility="collapsed")
+            existing_file = st.file_uploader("Existing Session File", type=["xlsx", "xls"], key="p1_existing", label_visibility="collapsed")
 
     # ── Settings row 1 - Multiple Batches + Price Tolerance, centered together
     st.markdown('<div style="height:0.6rem"></div>', unsafe_allow_html=True)
@@ -1189,7 +1189,7 @@ def p2_upload():
             unsafe_allow_html=True,
         )
         session_file = st.file_uploader(
-            "Session File", type=["xlsx"], key="p2_session", label_visibility="collapsed",
+            "Session File", type=["xlsx", "xls"], key="p2_session", label_visibility="collapsed",
         )
     with col2:
         st.markdown(
@@ -1197,7 +1197,7 @@ def p2_upload():
             unsafe_allow_html=True,
         )
         broker_file = st.file_uploader(
-            "Broker Reply", type=["xlsx"], key="p2_broker", label_visibility="collapsed",
+            "Broker Reply", type=["xlsx", "xls"], key="p2_broker", label_visibility="collapsed",
         )
 
     # ── Settings row - broker selector + process button ───────────────────────

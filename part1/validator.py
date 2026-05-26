@@ -4,7 +4,7 @@ Returns the research DataFrame enriched with Status, Reason, ISIN, and Context c
 """
 import pandas as pd
 
-from utils.isin import lookup_isin, build_isin_index
+from utils.isin import lookup_isin, lookup_isin_by_name, build_isin_index
 
 
 def _get_committed_cash(existing_session_df: pd.DataFrame | None) -> dict[str, float]:
@@ -66,14 +66,19 @@ def validate_orders(
     # Build O(1) lookup index once - avoids re-scanning 5K rows per order
     isin_index = build_isin_index(isin_db)
 
-    # ISIN lookup - scrip_df first, then isin_db index
+    # ISIN lookup - scrip_df first, then isin_db index, then isin_db name
     def _lookup_isin_for_row(ticker: str, ofin: str, direction: str) -> str:
-        # Try scrip-wise report for this ticker (any client row)
+        # 1. Try scrip-wise report - exact NSE ticker match
         matches = scrip_norm[scrip_norm["Scrip Name"] == ticker.upper().strip()]
         if not matches.empty and matches.iloc[0]["ISIN"]:
             return matches.iloc[0]["ISIN"]
-        # Fall back to ISIN database - O(1) dict lookup
+        # 2. Try ISIN database by NSE/BSE ticker code - O(1) dict lookup
         isin = lookup_isin(ticker, isin_db, _index=isin_index)
+        if isin:
+            return isin
+        # 3. Try ISIN database by company name - handles full names like
+        #    "AU SMALL FINANCE BANK LTD" when scrip has "AUBANK"
+        isin = lookup_isin_by_name(ticker, isin_db)
         return isin if isin else ""
 
     df["ISIN"] = df.apply(
@@ -93,13 +98,18 @@ def validate_orders(
     # --- SELL VALIDATION ---
     if sells_mask.any():
         sells = df[sells_mask].copy()
-        sells["_Ticker_upper"] = sells["Ticker"].str.upper().str.strip()
+
+        # Match by ISIN (not ticker name) so full company names like
+        # "AU SMALL FINANCE BANK LTD" correctly match scrip "AUBANK"
+        scrip_isin = (
+            scrip_norm[scrip_norm["ISIN"].str.strip() != ""][["OFIN", "ISIN", "Quantity"]]
+            .drop_duplicates(subset=["OFIN", "ISIN"])
+            .rename(columns={"Quantity": "_held"})
+        )
 
         merged = sells.merge(
-            scrip_norm[["OFIN", "Scrip Name", "Quantity"]].rename(
-                columns={"Quantity": "_held", "Scrip Name": "_Ticker_upper"}
-            ),
-            on=["OFIN", "_Ticker_upper"],
+            scrip_isin,
+            on=["OFIN", "ISIN"],
             how="left",
         )
 
