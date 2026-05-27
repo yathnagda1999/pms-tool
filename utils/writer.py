@@ -146,6 +146,12 @@ def write_allocation_file(allocation_df: pd.DataFrame) -> bytes:
             elif col_name == "Settlement No":
                 cell.value = None  # always blank
 
+            # Alignment: Client Name → left+center; all other columns → center+center
+            if col_name == "Client Name":
+                cell.alignment = Alignment(horizontal="left", vertical="center")
+            else:
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+
     # Auto-width - default=0 guards against empty DataFrame (no data rows)
     for col_idx, col_name in enumerate(cols, start=1):
         col_letter = get_column_letter(col_idx)
