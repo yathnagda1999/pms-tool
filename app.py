@@ -1114,6 +1114,9 @@ def p1_export():
     session_b64   = base64.b64encode(session_bytes).decode()
     broker_b64    = base64.b64encode(broker_bytes).decode()
 
+    # Batch number for filenames
+    _batch_num = int(session_df["Batch"].max())
+
     # ── Download badges - split-badge row: [Session File | ⬇ xlsx]  [Broker File | ⬇ xlsx]  [Download Both] ──
     _dl_icon = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12 3v13"/><polyline points="7 11 12 16 17 11"/><line x1="5" y1="21" x2="19" y2="21"/></svg>'
     components.html(f"""
@@ -1191,15 +1194,15 @@ def p1_export():
     <div class="dl-row">
       <a class="dl-badge"
          href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{session_b64}"
-         download="session_file_{_TODAY}.xlsx">
+         download="session_file_{_TODAY}_batch_{_batch_num}.xlsx">
         <span class="dl-badge-label">Session File</span>
-        <span class="dl-badge-action">{_dl_icon} Download session_file_{_TODAY}.xlsx</span>
+        <span class="dl-badge-action">{_dl_icon} Download session_file_{_TODAY}_batch_{_batch_num}.xlsx</span>
       </a>
       <a class="dl-badge"
          href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{broker_b64}"
-         download="broker_file_{_TODAY}.xlsx">
+         download="broker_file_{_TODAY}_batch_{_batch_num}.xlsx">
         <span class="dl-badge-label">Broker File</span>
-        <span class="dl-badge-action">{_dl_icon} Download broker_file_{_TODAY}.xlsx</span>
+        <span class="dl-badge-action">{_dl_icon} Download broker_file_{_TODAY}_batch_{_batch_num}.xlsx</span>
       </a>
       <button class="dl-both" onclick="
         var badges = document.querySelectorAll('a.dl-badge');
