@@ -906,6 +906,15 @@ def p1_validate():
     editor_df = vdf[base_cols].copy()
     if context_col:
         editor_df.rename(columns={"Context": "Units Held / Cash"}, inplace=True)
+
+    # Apply worst-case tolerance to Amount column:
+    # Buy → Qty × Ref Price × (1 + tol%)  |  Sell → Qty × Ref Price × (1 - tol%)
+    if tolerance > 0:
+        buy_mask  = vdf["Direction"] == "BUY"
+        sell_mask = vdf["Direction"] == "SELL"
+        editor_df.loc[buy_mask,  "Value"] = editor_df.loc[buy_mask,  "Value"] * (1 + tolerance / 100)
+        editor_df.loc[sell_mask, "Value"] = editor_df.loc[sell_mask, "Value"] * (1 - tolerance / 100)
+
     editor_df.insert(0, "Include", vdf["Status"] == "GREEN")
 
     if override == "red_out":
