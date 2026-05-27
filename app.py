@@ -1568,12 +1568,32 @@ def isin_page():
             get_isin_db.clear()
             st.session_state.isin_bulk_key = st.session_state.get("isin_bulk_key", 0) + 1
             if added > 0:
-                st.toast(f"✓ {added:,} new entries added. {skipped:,} already existed.")
+                st.session_state.isin_bulk_msg = ("green", f"✓  {added:,} new ISINs added.")
             else:
-                st.toast(f"All {skipped:,} entries already exist. Nothing added.")
+                st.session_state.isin_bulk_msg = ("amber", "All entries already exist in the database.")
             st.rerun()
         except ValueError as e:
-            st.error(str(e))
+            st.session_state.isin_bulk_msg = ("red", str(e))
+            st.rerun()
+
+    # Show result message below the header if present
+    if st.session_state.get("isin_bulk_msg"):
+        colour, msg = st.session_state.isin_bulk_msg
+        colours = {
+            "green": ("#166534", "rgba(22,163,74,0.08)", "rgba(22,163,74,0.25)"),
+            "amber": ("#6B5718", "#FBF5E3",              "rgba(217,178,68,0.3)"),
+            "red":   ("#991B1B", "rgba(220,38,38,0.06)", "rgba(220,38,38,0.2)"),
+        }
+        fg, bg, border = colours.get(colour, colours["green"])
+        st.markdown(
+            f'<div style="font-family:\'DM Sans\',sans-serif;font-size:0.78rem;'
+            f'font-weight:400;color:{fg};background:{bg};border:1px solid {border};'
+            f'border-radius:6px;padding:0.45rem 0.9rem;display:inline-block;'
+            f'margin-bottom:0.8rem">{msg}</div>',
+            unsafe_allow_html=True,
+        )
+        # Clear after one render so it disappears on next interaction
+        del st.session_state.isin_bulk_msg
 
     # ── Search bar ────────────────────────────────────────────────────────────
     search_col, count_col = st.columns([4, 1])
