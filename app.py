@@ -5,6 +5,7 @@ Step-based single-page Streamlit app with modern UI.
 import io
 import pathlib
 import base64
+from datetime import date
 
 import pandas as pd
 import streamlit as st
@@ -22,6 +23,9 @@ from part1.broker_file import build_broker_file
 from part2.parser import parse_ambit_reply, parse_incred_reply, get_incred_cp_codes
 from part2.matcher import match_session_to_broker
 from part2.allocator import allocate_costs
+
+# ── Date stamp for download filenames ────────────────────────────────────────
+_TODAY = date.today().strftime("%d_%m_%Y")
 
 # ── Page config ──────────────────────────────────────────────────────────────
 
@@ -1187,15 +1191,15 @@ def p1_export():
     <div class="dl-row">
       <a class="dl-badge"
          href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{session_b64}"
-         download="session_file.xlsx">
+         download="session_file_{_TODAY}.xlsx">
         <span class="dl-badge-label">Session File</span>
-        <span class="dl-badge-action">{_dl_icon} Download session_file.xlsx</span>
+        <span class="dl-badge-action">{_dl_icon} Download session_file_{_TODAY}.xlsx</span>
       </a>
       <a class="dl-badge"
          href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{broker_b64}"
-         download="broker_file.xlsx">
+         download="broker_file_{_TODAY}.xlsx">
         <span class="dl-badge-label">Broker File</span>
-        <span class="dl-badge-action">{_dl_icon} Download broker_file.xlsx</span>
+        <span class="dl-badge-action">{_dl_icon} Download broker_file_{_TODAY}.xlsx</span>
       </a>
       <button class="dl-both" onclick="
         var badges = document.querySelectorAll('a.dl-badge');
@@ -1485,9 +1489,9 @@ def p2_results():
     <div class="dl-row">
       <a class="dl-badge"
          href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{alloc_b64}"
-         download="orbis_allocation.xlsx">
+         download="orbis_allocation_{_TODAY}.xlsx">
         <span class="dl-badge-label">Orbis Allocation File</span>
-        <span class="dl-badge-action">{_dl_icon} Download orbis_allocation.xlsx</span>
+        <span class="dl-badge-action">{_dl_icon} Download orbis_allocation_{_TODAY}.xlsx</span>
       </a>
     </div>
     """, height=72)
