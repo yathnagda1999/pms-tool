@@ -909,6 +909,7 @@ def p1_validate():
 
     # Apply worst-case tolerance to Amount column:
     # Buy → Qty × Ref Price × (1 + tol%)  |  Sell → Qty × Ref Price × (1 - tol%)
+    tolerance = st.session_state.get("p1_tolerance", 0.0)
     if tolerance > 0:
         buy_mask  = vdf["Direction"] == "BUY"
         sell_mask = vdf["Direction"] == "SELL"
