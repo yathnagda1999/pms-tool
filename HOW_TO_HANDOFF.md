@@ -153,10 +153,11 @@ For anything unclear: the code itself is the source of truth.
 ## Quick Reference — Repo & Run Commands
 
 ```
-Repo:     https://github.com/yathnagada1999/pms-tool
-Branch:   main
+Repo:       https://github.com/yathnagada1999/pms-tool
+Branch:     main
+Live app:   https://pms-tool.streamlit.app/
 
-Run main app:
+Run locally:
   python -m streamlit run app.py --server.port 8501
 
 Run raw test instance (separate folder, not in repo):

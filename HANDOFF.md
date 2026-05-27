@@ -119,8 +119,11 @@ Get-NetTCPConnection -LocalPort 8502 -State Listen | Select-Object -ExpandProper
 ### GitHub repo
 `https://github.com/yathnagada1999/pms-tool`
 
+### Live deployment
+`https://pms-tool.streamlit.app/`
+
 ### After pulling new code
-Restart the Streamlit server. Code changes to `.py` files only take effect on restart.
+Restart the Streamlit server (local) or reboot the app on Streamlit Cloud. Code changes to `.py` files only take effect on restart.
 
 ---
 
@@ -526,11 +529,19 @@ All CSS is in the `CSS` constant at the top of `app.py`, injected via `st.markdo
 
 ---
 
-## 16. What Is Not Yet Done
+## 16. Deployment
+
+The app is live at: **https://pms-tool.streamlit.app/**
+
+Deployed via Streamlit Community Cloud, connected to the GitHub repo (`main` branch).
+Code changes pushed to `main` are automatically picked up on the next app restart/reboot.
+
+---
+
+## 17. What Is Not Yet Done
 
 - **Full test suite** — `tests/` folder has structure but coverage is not complete.
-- **Streamlit deployment** — not set up. App runs locally only.
-- **ISIN database edit/delete** — intentionally out of scope. Research team edits CSV directly.
+- **ISIN database edit/delete** — intentionally out of scope. Research team edits CSV directly for delistings. Adding new entries is handled via the UI (single entry form + bulk CSV upload).
 - **Email integration** — out of scope.
 - **Tolerance in broker file** — decided: tolerance is internal only, broker gets plain Ref Price.
 
