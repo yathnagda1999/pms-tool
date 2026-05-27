@@ -105,7 +105,7 @@ def allocate_costs(
                 "Exchange Type": exchange,
                 "Settlement No": None,
                 "ISIN No": row["ISIN"],
-                "Buy/ Sell": row["Direction"],
+                "Buy/ Sell": row["Direction"].title(),
                 "Input Quantity": int(row["Qty"]),
                 "_Batch": row["Batch"],
                 "_SNo": row["S.No"],
