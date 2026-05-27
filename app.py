@@ -923,61 +923,47 @@ def p1_validate():
     elif override == "all_out":
         editor_df["Include"] = False
 
-    # ── Split table: narrow checkbox editor (left) + colour-styled display (right)
-    # Both use auto-height (no cap) so the PAGE scrolls - keeps rows in visual sync.
-    col_check, col_table = st.columns([0.7, 8.3])
-
-    with col_check:
-        check_df = editor_df[["Include"]].copy()
-        edited_check = st.data_editor(
-            check_df,
-            column_config={
-                "Include": st.column_config.CheckboxColumn("", default=True, width="small"),
-            },
-            hide_index=True,
-            use_container_width=True,
-            key="p1_editor_check",
+    # ── Single data_editor: checkbox + row colours in one component ──────────────
+    def _row_style(row):
+        colour = (
+            "rgba(22,163,74,0.07)" if row["Status"] == "GREEN"
+            else "rgba(220,38,38,0.06)"
         )
+        return [f"background-color: {colour}"] * len(row)
 
-    with col_table:
-        display_df = editor_df.drop(columns=["Include"])
+    styled_editor = (
+        editor_df.style
+        .apply(_row_style, axis=1)
+        .format({
+            "Status": lambda v: "READY" if v == "GREEN" else "BLOCKED",
+            "Value":  lambda v: f"{v:,.2f}" if v == v else "",
+        })
+    )
 
-        def _row_style(row):
-            colour = (
-                "rgba(22,163,74,0.07)" if row["Status"] == "GREEN"
-                else "rgba(220,38,38,0.06)"
-            )
-            return [f"background-color: {colour}"] * len(row)
+    disabled_cols = [c for c in editor_df.columns if c != "Include"]
 
-        styled_df = (
-            display_df.style
-            .apply(_row_style, axis=1)
-            .format({
-                "Status": lambda v: "READY" if v == "GREEN" else "BLOCKED",
-                "Value":  lambda v: f"{v:,.2f}" if v == v else "",
-            })
-            .set_properties(**{"white-space": "normal"})
-        )
+    edited = st.data_editor(
+        styled_editor,
+        column_config={
+            "Include":           st.column_config.CheckboxColumn("☑", default=True, width="small"),
+            "S.No":              st.column_config.NumberColumn("No.", format="%d", width="small"),
+            "Client":            st.column_config.TextColumn("Client", width="medium"),
+            "Ticker":            st.column_config.TextColumn("Ticker", width="small"),
+            "Direction":         st.column_config.TextColumn("Dir", width="small"),
+            "Qty":               st.column_config.NumberColumn("Qty", format="%.2f", width="small"),
+            "Value":             st.column_config.TextColumn("Amount", width="small"),
+            "Status":            st.column_config.TextColumn("Status", width="small"),
+            "Units Held / Cash": st.column_config.TextColumn("Available / Held", width="medium"),
+            "Reason":            st.column_config.TextColumn("Reason", width="large"),
+        },
+        disabled=disabled_cols,
+        hide_index=True,
+        use_container_width=True,
+        key="p1_editor_check",
+    )
 
-        st.dataframe(
-            styled_df,
-            column_config={
-                "S.No":              st.column_config.NumberColumn("No.", format="%d", width="small"),
-                "Client":            st.column_config.TextColumn("Client", width="medium"),
-                "Ticker":            st.column_config.TextColumn("Ticker", width="small"),
-                "Direction":         st.column_config.TextColumn("Dir", width="small"),
-                "Qty":               st.column_config.NumberColumn("Qty", format="%.2f", width="small"),
-                "Value":             st.column_config.TextColumn("Amount", width="small"),
-                "Status":            st.column_config.TextColumn("Status", width="small"),
-                "Units Held / Cash": st.column_config.TextColumn("Available / Held", width="medium"),
-                "Reason":            st.column_config.TextColumn("Reason", width="large"),
-            },
-            hide_index=True,
-            use_container_width=True,
-        )
-
-    red_included = int(((edited_check["Include"] == True) & (vdf["Status"] == "RED")).sum())
-    n_included   = int(edited_check["Include"].sum())
+    red_included = int(((edited["Include"] == True) & (vdf["Status"] == "RED")).sum())
+    n_included   = int(edited["Include"].sum())
 
     # Inline warning if blocked rows are still checked
     if red_included > 0:
@@ -1064,7 +1050,7 @@ def p1_validate():
         if st.button(gen_label, type="primary", disabled=not can_generate,
                      key="p1_gen_btn", use_container_width=True):
             with st.spinner("Building session file and broker file..."):
-                included_idx = edited_check[edited_check["Include"] == True].index
+                included_idx = edited[edited["Include"] == True].index
                 included_df  = vdf.loc[included_idx].copy()
 
                 session_df = build_session_file(
