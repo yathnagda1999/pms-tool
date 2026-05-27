@@ -149,7 +149,7 @@ def write_allocation_file(allocation_df: pd.DataFrame) -> bytes:
             if col_name in CURRENCY_COLS and val is not None:
                 cell.number_format = _COL_NUMBER_FORMAT.get(col_name, "0.00")
             elif col_name == "TradeDate" and val is not None:
-                cell.number_format = "DD-MMM-YYYY"
+                cell.number_format = "DD-MM-YYYY"
             elif col_name == "Settlement No":
                 cell.value = None  # always blank
 
